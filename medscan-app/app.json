@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "MEDSCAN",
+    "slug": "medscan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F8FCFB"
+      },
+      "package": "com.medscan.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "medscan",
+    "plugins": [
+      "expo-font",
+      "expo-asset",
+      "expo-status-bar"
+    ]
+  }
+}
