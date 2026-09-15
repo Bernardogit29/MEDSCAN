@@ -1,14 +1,47 @@
 import axios from "axios";
+import Constants from "expo-constants";
 import { NativeModules, Platform } from "react-native";
 
 function getDevServerHost() {
   const scriptURL = NativeModules.SourceCode?.scriptURL;
-  if (!scriptURL) {
+  const scriptMatch = scriptURL?.match(/\/\/([^/:]+)/);
+  if (scriptMatch?.[1]) {
+    return scriptMatch[1];
+  }
+
+  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoClient?.hostUri;
+  return hostUri?.split(":")[0] || null;
+}
+
+function isLoopbackHost(host) {
+  return host === "localhost" || host === "127.0.0.1";
+}
+
+function isTunnelHost(host) {
+  return host.endsWith(".exp.direct") || host.endsWith(".ngrok.io") || host.endsWith(".ngrok-free.app");
+}
+
+function isLoopbackApiUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return isLoopbackHost(parsed.hostname);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function getEnvApiUrl() {
+  const value = process.env.EXPO_PUBLIC_API_URL?.trim();
+
+  if (!value) {
     return null;
   }
 
-  const match = scriptURL.match(/\/\/([^/:]+)/);
-  return match?.[1] || null;
+  if (Platform.OS !== "web" && isLoopbackApiUrl(value)) {
+    return null;
+  }
+
+  return value;
 }
 
 function getDefaultApiUrl() {
@@ -17,7 +50,7 @@ function getDefaultApiUrl() {
   }
 
   const devServerHost = getDevServerHost();
-  if (devServerHost && devServerHost !== "localhost" && devServerHost !== "127.0.0.1") {
+  if (devServerHost && !isLoopbackHost(devServerHost) && !isTunnelHost(devServerHost)) {
     return `http://${devServerHost}:3000/api`;
   }
 
@@ -28,7 +61,7 @@ function getDefaultApiUrl() {
   return "http://localhost:3000/api";
 }
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || getDefaultApiUrl();
+export const API_URL = getEnvApiUrl() || getDefaultApiUrl();
 export const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 const api = axios.create({
