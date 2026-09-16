@@ -8,16 +8,22 @@ function sanitizeUser(user) {
     id: user._id,
     name: user.name,
     email: user.email,
+    age: user.age,
     createdAt: user.createdAt
   };
 }
 
 async function register(req, res, next) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, age, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Nome, e-mail e senha são obrigatórios." });
+    if (!name || !email || age === undefined || age === "" || !password) {
+      return res.status(400).json({ message: "Nome, idade, e-mail e senha são obrigatórios." });
+    }
+
+    const numericAge = Number(age);
+    if (!Number.isInteger(numericAge) || numericAge < 0 || numericAge > 120) {
+      return res.status(400).json({ message: "Informe uma idade válida entre 0 e 120 anos." });
     }
 
     const existingUser = await User.findOne({ email });
@@ -29,6 +35,7 @@ async function register(req, res, next) {
     const user = await User.create({
       name,
       email,
+      age: numericAge,
       password: hashedPassword
     });
 

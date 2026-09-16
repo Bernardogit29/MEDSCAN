@@ -11,13 +11,20 @@ import { colors } from "../constants/theme";
 export default function RegisterScreen({ navigation }) {
   const { register, loading } = useAuth();
   const [name, setName] = useState("");
+  const [age, setAge] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   async function handleRegister() {
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !age || !email || !password || !confirmPassword) {
       Alert.alert("Campos obrigatorios", "Preencha todos os campos para criar sua conta.");
+      return;
+    }
+
+    const numericAge = Number(age);
+    if (!Number.isInteger(numericAge) || numericAge < 0 || numericAge > 120) {
+      Alert.alert("Idade invalida", "Informe uma idade entre 0 e 120 anos.");
       return;
     }
 
@@ -27,7 +34,7 @@ export default function RegisterScreen({ navigation }) {
     }
 
     try {
-      await register(name.trim(), email.trim(), password);
+      await register(name.trim(), email.trim(), numericAge, password);
       navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (error) {
       const fallbackMessage = error.response
@@ -55,6 +62,14 @@ export default function RegisterScreen({ navigation }) {
 
           <View style={styles.form}>
             <Input label="Nome" icon="account-outline" value={name} onChangeText={setName} placeholder="Seu nome" />
+            <Input
+              label="Idade"
+              icon="calendar-account-outline"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+              placeholder="Sua idade"
+            />
             <Input
               label="E-mail"
               icon="email-outline"

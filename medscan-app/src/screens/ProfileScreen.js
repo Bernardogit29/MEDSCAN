@@ -127,7 +127,11 @@ export default function ProfileScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Perfil" subtitle="Gerencie seus dados e preferências" />
+        <Header
+          title="Perfil"
+          subtitle="Gerencie seus dados e preferências"
+          onNotificationsPress={() => navigation.navigate("Notifications")}
+        />
 
         <Card style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -136,6 +140,9 @@ export default function ProfileScreen({ navigation, route }) {
           <View style={styles.profileCopy}>
             <Text style={styles.name}>{currentUser.name || "Usuário MEDSCAN"}</Text>
             <Text style={styles.email}>{currentUser.email || "usuario@medscan.com"}</Text>
+            {currentUser.age !== undefined && currentUser.age !== null ? (
+              <Text style={styles.age}>{currentUser.age} anos</Text>
+            ) : null}
             <View style={styles.verifiedBadge}>
               <MaterialCommunityIcons name="check-decagram" size={18} color={colors.success} />
               <Text style={styles.verifiedText}>
@@ -173,7 +180,12 @@ export default function ProfileScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Configurações</Text>
         <View style={styles.settingsList}>
           {settings.map((item) => (
-            <TouchableOpacity key={item.label} style={styles.settingRow} activeOpacity={0.84}>
+            <TouchableOpacity
+              key={item.label}
+              style={styles.settingRow}
+              activeOpacity={0.84}
+              onPress={item.label === "Notificações" ? () => navigation.navigate("Notifications") : undefined}
+            >
               <View style={styles.settingIcon}>
                 <MaterialCommunityIcons name={item.icon} size={24} color={colors.primary} />
               </View>
@@ -258,6 +270,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     marginTop: 4
+  },
+  age: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 3
   },
   verifiedBadge: {
     marginTop: 10,

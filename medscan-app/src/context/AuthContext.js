@@ -94,10 +94,10 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function register(name, email, password) {
+  async function register(name, email, age, password) {
     setLoading(true);
     try {
-      const data = await authRequest("/auth/register", { name, email, password });
+      const data = await authRequest("/auth/register", { name, email, age, password });
       await applySession(data);
       return data;
     } finally {

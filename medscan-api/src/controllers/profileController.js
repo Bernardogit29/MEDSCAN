@@ -13,7 +13,8 @@ async function getProfile(req, res, next) {
       user: {
         id: req.user._id,
         name: req.user.name,
-        email: req.user.email
+        email: req.user.email,
+        age: req.user.age
       },
       profile
     });
@@ -24,12 +25,18 @@ async function getProfile(req, res, next) {
 
 async function updateProfile(req, res, next) {
   try {
-    const { name, email, verified, relatives, settings } = req.body;
+    const { name, email, age, verified, relatives, settings } = req.body;
 
-    if (name || email) {
+    const numericAge = age === undefined || age === "" ? undefined : Number(age);
+    if (numericAge !== undefined && (!Number.isInteger(numericAge) || numericAge < 0 || numericAge > 120)) {
+      return res.status(400).json({ message: "Informe uma idade válida entre 0 e 120 anos." });
+    }
+
+    if (name || email || numericAge !== undefined) {
       await User.findByIdAndUpdate(req.user._id, {
         ...(name ? { name } : {}),
-        ...(email ? { email } : {})
+        ...(email ? { email } : {}),
+        ...(numericAge !== undefined ? { age: numericAge } : {})
       });
     }
 
