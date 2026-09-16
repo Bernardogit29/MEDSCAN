@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
@@ -17,7 +17,7 @@ const settings = [
   { label: "Ajuda e Suporte", icon: "help-circle-outline" }
 ];
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const { user, logout } = useAuth();
   const [profileData, setProfileData] = useState({
     user,
@@ -26,6 +26,10 @@ export default function ProfileScreen({ navigation }) {
       relatives: []
     }
   });
+  const [familyModalVisible, setFamilyModalVisible] = useState(false);
+  const [familyName, setFamilyName] = useState("");
+  const [familyAge, setFamilyAge] = useState("");
+  const [savingFamily, setSavingFamily] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -50,6 +54,58 @@ export default function ProfileScreen({ navigation }) {
       mounted = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (route.params?.openFamilyForm) {
+      setFamilyModalVisible(true);
+      navigation.setParams({ openFamilyForm: false });
+    }
+  }, [navigation, route.params?.openFamilyForm]);
+
+  async function addFamilyMember() {
+    const name = familyName.trim();
+    const age = Number(familyAge);
+
+    if (!name) {
+      Alert.alert("Dados incompletos", "Informe o nome do familiar.");
+      return;
+    }
+
+    if (familyAge && (!Number.isInteger(age) || age < 0 || age > 120)) {
+      Alert.alert("Idade inválida", "Informe uma idade entre 0 e 120 anos.");
+      return;
+    }
+
+    const relative = {
+      id: `relative-${Date.now()}`,
+      name,
+      age: familyAge ? age : null,
+      relation: "Familiar monitorado",
+      status: "Estavel",
+      icon: "account-heart",
+      vitals: {
+        heartRate: 82,
+        glucose: 98,
+        bloodPressure: "120/80",
+        sleep: "7h 30m"
+      }
+    };
+
+    setSavingFamily(true);
+    try {
+      const relatives = [...(profileData.profile?.relatives || []), relative];
+      const { data } = await api.put("/profile", { relatives });
+      setProfileData(data);
+      setFamilyName("");
+      setFamilyAge("");
+      setFamilyModalVisible(false);
+      Alert.alert("Familiar adicionado", `${name} agora aparece no monitoramento.`);
+    } catch (error) {
+      Alert.alert("Não foi possível salvar", "Verifique a conexão com a API e tente novamente.");
+    } finally {
+      setSavingFamily(false);
+    }
+  }
 
   function handleLogout() {
     Alert.alert("Sair da conta", "Deseja encerrar sua sessão?", [
@@ -110,7 +166,7 @@ export default function ProfileScreen({ navigation }) {
             title="Adicionar familiar para monitoramento"
             icon="account-heart-outline"
             variant="soft"
-            onPress={() => Alert.alert("Familiar", "Cadastro de familiares preparado para expansão.")}
+            onPress={() => setFamilyModalVisible(true)}
           />
         </View>
 
@@ -133,6 +189,33 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <Modal visible={familyModalVisible} transparent animationType="slide" onRequestClose={() => setFamilyModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Adicionar familiar</Text>
+            <Text style={styles.modalSubtitle}>Cadastre uma pessoa para acompanhar no monitoramento.</Text>
+            <TextInput
+              value={familyName}
+              onChangeText={setFamilyName}
+              placeholder="Nome completo"
+              placeholderTextColor={colors.textMuted}
+              style={styles.modalInput}
+            />
+            <TextInput
+              value={familyAge}
+              onChangeText={setFamilyAge}
+              placeholder="Idade (opcional)"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <View style={styles.modalActions}>
+              <Button title="Cancelar" variant="outline" onPress={() => setFamilyModalVisible(false)} />
+              <Button title="Salvar familiar" onPress={addFamilyMember} loading={savingFamily} />
+            </View>
+          </View>
+        </View>
+      </Modal>
       <BottomTab navigation={navigation} active="Profile" />
     </SafeAreaView>
   );
@@ -232,6 +315,42 @@ const styles = StyleSheet.create({
   },
   settingsList: {
     gap: 12
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15, 23, 42, 0.45)"
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 22,
+    gap: 14
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 23,
+    fontWeight: "900"
+  },
+  modalSubtitle: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20
+  },
+  modalInput: {
+    minHeight: 52,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    color: colors.text,
+    fontSize: 16
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10
   },
   settingRow: {
     minHeight: 64,

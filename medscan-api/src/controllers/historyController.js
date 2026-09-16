@@ -2,13 +2,13 @@ const Analysis = require("../models/Analysis");
 
 async function listHistory(req, res, next) {
   try {
-    const personId = req.query.personId || req.query.monitoredPersonId || "maria";
+    const personId = req.query.personId || req.query.monitoredPersonId || "self";
     const query = {
       userId: req.user._id,
       monitoredPersonId: personId
     };
 
-    if (personId === "maria") {
+    if (personId === "self") {
       query.$or = [
         { monitoredPersonId: personId },
         { monitoredPersonId: { $exists: false } }
@@ -44,8 +44,8 @@ async function createHistoryItem(req, res, next) {
   try {
     const analysis = await Analysis.create({
       userId: req.user._id,
-      monitoredPersonId: req.body.monitoredPersonId || "maria",
-      monitoredPersonName: req.body.monitoredPersonName || "Maria Silva",
+      monitoredPersonId: req.body.monitoredPersonId || "self",
+      monitoredPersonName: req.body.monitoredPersonName || req.user.name,
       type: req.body.type || "symptoms",
       symptoms: req.body.symptoms || "",
       imageUrl: req.body.imageUrl || "",

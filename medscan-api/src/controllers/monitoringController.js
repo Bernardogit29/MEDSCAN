@@ -1,5 +1,6 @@
 const Monitoring = require("../models/Monitoring");
 const Device = require("../models/Device");
+const Profile = require("../models/Profile");
 
 const defaultDevices = [
   { name: "Smartwatch", type: "wearable", battery: 85, connected: true },
@@ -16,11 +17,24 @@ async function getMonitoring(req, res, next) {
       monitoring = await Monitoring.create({ userId: req.user._id });
     }
 
+    const profile = await Profile.findOne({ userId: req.user._id });
+    const personId = req.query.personId || "self";
+    const relative = profile?.relatives?.find((item) => item.id === personId);
+    const monitoredPerson = relative || {
+      id: "self",
+      name: req.user.name,
+      age: req.user.age || null,
+      status: monitoring.status,
+      relation: "Meu monitoramento"
+    };
+
     return res.json({
       monitoredPerson: {
-        name: "Maria Silva",
-        age: 72,
-        status: monitoring.status
+        id: monitoredPerson.id,
+        name: monitoredPerson.name,
+        age: monitoredPerson.age,
+        status: monitoredPerson.status || monitoring.status,
+        relation: monitoredPerson.relation
       },
       vitals: monitoring,
       alerts: [

@@ -6,13 +6,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
 import Header from "../components/Header";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { colors, radius, shadows } from "../constants/theme";
 import { mockHistory } from "../utils/mockData";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
+  getMonitoredPeople,
   findMonitoredPerson,
-  monitoredPeople
 } from "../utils/monitoredPeople";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
@@ -77,10 +78,12 @@ function riskColor(risk) {
 }
 
 export default function HistoryScreen({ navigation }) {
+  const { user } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [selectedPersonId, setSelectedPersonId] = useState(DEFAULT_MONITORED_PERSON_ID);
-  const selectedPerson = findMonitoredPerson(selectedPersonId);
+  const selectedPerson = findMonitoredPerson(selectedPersonId, people);
 
   useEffect(() => {
     let mounted = true;
@@ -107,7 +110,20 @@ export default function HistoryScreen({ navigation }) {
       async function loadHistory() {
         setLoading(true);
         try {
-          const { data } = await api.get(`/history?personId=${selectedPersonId}`);
+          const [profileResponse, historyResponse] = await Promise.all([
+            api.get("/profile"),
+            api.get(`/history?personId=${selectedPersonId}`)
+          ]);
+          const profile = profileResponse.data.profile || {};
+          const loadedPeople = getMonitoredPeople(profileResponse.data.user || user, profile.relatives || []);
+          if (mounted) {
+            setPeople(loadedPeople);
+            if (!loadedPeople.some((person) => person.id === selectedPersonId)) {
+              setSelectedPersonId(DEFAULT_MONITORED_PERSON_ID);
+              await setStoredItem(MONITORED_PERSON_STORAGE_KEY, DEFAULT_MONITORED_PERSON_ID);
+            }
+          }
+          const { data } = historyResponse;
           if (mounted) setHistory(data);
         } catch (error) {
           if (mounted) setHistory(fallbackHistoryByPerson[selectedPersonId] || []);
@@ -121,7 +137,7 @@ export default function HistoryScreen({ navigation }) {
       return () => {
         mounted = false;
       };
-    }, [selectedPersonId])
+    }, [selectedPersonId, user])
   );
 
   async function selectPerson(personId) {
@@ -135,7 +151,7 @@ export default function HistoryScreen({ navigation }) {
         <Header title="Historico" subtitle={`Analises de ${selectedPerson.name}`} />
 
         <View style={styles.personTabs}>
-          {monitoredPeople.map((person) => {
+          {people.map((person) => {
             const isActive = person.id === selectedPersonId;
 
             return (

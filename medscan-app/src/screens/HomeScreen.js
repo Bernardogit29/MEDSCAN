@@ -26,9 +26,10 @@ import { colors, radius, shadows } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
+  getMonitoredPeople,
   findMonitoredPerson
 } from "../utils/monitoredPeople";
-import { getStoredItem } from "../utils/storage";
+import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
@@ -87,8 +88,24 @@ export default function HomeScreen({ navigation }) {
     try {
       const formData = new FormData();
       const storedPersonId = await getStoredItem(MONITORED_PERSON_STORAGE_KEY);
-      const monitoredPersonId = storedPersonId || DEFAULT_MONITORED_PERSON_ID;
-      const monitoredPerson = findMonitoredPerson(monitoredPersonId);
+      let monitoredPersonId = storedPersonId || DEFAULT_MONITORED_PERSON_ID;
+      let monitoredPerson = findMonitoredPerson(monitoredPersonId, getMonitoredPeople(user));
+
+      try {
+        const profileResponse = await api.get("/profile");
+        const profile = profileResponse.data.profile || {};
+        monitoredPerson = findMonitoredPerson(
+          monitoredPersonId,
+          getMonitoredPeople(profileResponse.data.user || user, profile.relatives || [])
+        );
+      } catch (_error) {
+        // The analysis request below will surface an API error if the profile cannot load.
+      }
+
+      if (monitoredPerson.id !== monitoredPersonId) {
+        monitoredPersonId = monitoredPerson.id;
+        await setStoredItem(MONITORED_PERSON_STORAGE_KEY, monitoredPersonId);
+      }
 
       formData.append("symptoms", symptoms);
       formData.append("type", selectedImage ? selectedType : "symptoms");

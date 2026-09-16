@@ -6,8 +6,8 @@ async function analyze(req, res, next) {
     const {
       symptoms = "",
       type,
-      monitoredPersonId = "maria",
-      monitoredPersonName = "Maria Silva"
+      monitoredPersonId = "self",
+      monitoredPersonName
     } = req.body;
     const file = req.file;
     const analysisType = type || (file ? "image" : "symptoms");
@@ -27,7 +27,7 @@ async function analyze(req, res, next) {
     const analysis = await Analysis.create({
       userId: req.user._id,
       monitoredPersonId,
-      monitoredPersonName,
+      monitoredPersonName: monitoredPersonName || req.user.name,
       type: analysisType,
       symptoms,
       imageUrl,

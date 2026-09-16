@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
@@ -9,50 +10,63 @@ import DeviceCard from "../components/DeviceCard";
 import Header from "../components/Header";
 import HealthCard from "../components/HealthCard";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { colors, radius } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
+  getMonitoredPeople,
   findMonitoredPerson,
-  monitoredPeople
 } from "../utils/monitoredPeople";
 import { mockDevices, mockMonitoring } from "../utils/mockData";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function MonitoringScreen({ navigation }) {
+  const { user } = useAuth();
   const [monitoring, setMonitoring] = useState(mockMonitoring);
   const [devices, setDevices] = useState(mockDevices);
+  const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [selectedPersonId, setSelectedPersonId] = useState(DEFAULT_MONITORED_PERSON_ID);
   const [showPeopleMenu, setShowPeopleMenu] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
-    async function load() {
-      try {
-        const [monitoringResponse, devicesResponse] = await Promise.all([
-          api.get("/monitoring"),
-          api.get("/devices")
-        ]);
+      async function load() {
+        try {
+          const [profileResponse, monitoringResponse, devicesResponse] = await Promise.all([
+            api.get("/profile"),
+            api.get(`/monitoring?personId=${selectedPersonId}`),
+            api.get("/devices")
+          ]);
 
-        if (mounted) {
-          setMonitoring(monitoringResponse.data);
-          setDevices(devicesResponse.data.length ? devicesResponse.data : mockDevices);
-        }
-      } catch (error) {
-        if (mounted) {
-          setMonitoring(mockMonitoring);
-          setDevices(mockDevices);
+          if (mounted) {
+            const profile = profileResponse.data.profile || {};
+            const loadedPeople = getMonitoredPeople(profileResponse.data.user || user, profile.relatives || []);
+            setPeople(loadedPeople);
+            if (!loadedPeople.some((person) => person.id === selectedPersonId)) {
+              setSelectedPersonId(DEFAULT_MONITORED_PERSON_ID);
+              await setStoredItem(MONITORED_PERSON_STORAGE_KEY, DEFAULT_MONITORED_PERSON_ID);
+            }
+            setMonitoring(monitoringResponse.data);
+            setDevices(devicesResponse.data.length ? devicesResponse.data : mockDevices);
+          }
+        } catch (error) {
+          if (mounted) {
+            setMonitoring(mockMonitoring);
+            setDevices(mockDevices);
+          }
         }
       }
-    }
 
-    load();
+      load();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, [selectedPersonId, user])
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -72,7 +86,7 @@ export default function MonitoringScreen({ navigation }) {
     };
   }, []);
 
-  const selectedPerson = findMonitoredPerson(selectedPersonId);
+  const selectedPerson = findMonitoredPerson(selectedPersonId, people);
   const vitals = selectedPerson.vitals || monitoring.vitals || mockMonitoring.vitals;
   const alerts = monitoring.alerts || mockMonitoring.alerts;
 
@@ -130,7 +144,7 @@ export default function MonitoringScreen({ navigation }) {
           {showPeopleMenu ? (
             <Card style={styles.peopleMenu}>
               <Text style={styles.menuTitle}>Trocar pessoa monitorada</Text>
-              {monitoredPeople.map((person) => {
+              {people.map((person) => {
                 const isCurrent = person.id === selectedPersonId;
 
                 return (
@@ -159,7 +173,7 @@ export default function MonitoringScreen({ navigation }) {
               <TouchableOpacity
                 style={styles.addPersonOption}
                 activeOpacity={0.84}
-                onPress={() => Alert.alert("Adicionar pessoa", "Fluxo preparado para cadastrar novo familiar.")}
+                onPress={() => navigation.navigate("Profile", { openFamilyForm: true })}
               >
                 <View style={styles.addPersonIcon}>
                   <MaterialCommunityIcons name="plus" size={28} color={colors.primary} />
