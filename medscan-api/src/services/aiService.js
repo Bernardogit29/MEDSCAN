@@ -2,7 +2,8 @@ const fs = require("fs/promises");
 const axios = require("axios");
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-const DEFAULT_MODEL = "gemini-2.5-pro";
+const DEFAULT_MODEL = "gemini-3.6-flash";
+const DEPRECATED_MODELS = new Set(["gemini-2.5-pro", "gemini-2.5-flash"]);
 const MAX_INLINE_IMAGE_BYTES = 8 * 1024 * 1024;
 
 const medicalDisclaimer =
@@ -443,6 +444,16 @@ function buildGeminiEndpoint(model) {
   return `${GEMINI_BASE_URL}/models/${encodeURIComponent(normalizedModel)}:generateContent`;
 }
 
+function resolveGeminiModel(configuredModel) {
+  const normalizedModel = (configuredModel || "").replace(/^models\//, "").trim();
+
+  if (!normalizedModel || DEPRECATED_MODELS.has(normalizedModel)) {
+    return DEFAULT_MODEL;
+  }
+
+  return normalizedModel;
+}
+
 async function requestGemini({ model, apiKey, parts }) {
   const response = await axios.post(
     buildGeminiEndpoint(model),
@@ -500,7 +511,12 @@ async function analyzeMedicalData({ symptoms = "", image }) {
     };
   }
 
-  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  const configuredModel = process.env.GEMINI_MODEL?.trim();
+  const model = resolveGeminiModel(configuredModel);
+
+  if (configuredModel && model !== configuredModel.replace(/^models\//, "").trim()) {
+    console.warn(`Modelo Gemini desatualizado (${configuredModel}). Usando ${model}.`);
+  }
 
   try {
     const imagePart = await buildImagePart(image);
@@ -561,9 +577,18 @@ async function analyzeMedicalData({ symptoms = "", image }) {
       apiMessage || ""
     );
 
-    const providerError = new Error(
-      "O Gemini nao respondeu corretamente. Verifique a GEMINI_API_KEY, o modelo configurado e tente novamente."
-    );
+    let providerMessage =
+      "O Gemini nao respondeu corretamente. Verifique a GEMINI_API_KEY, o modelo configurado e tente novamente.";
+
+    if (status === 401 || status === 403) {
+      providerMessage = "A chave da API do Gemini foi recusada. Confira a GEMINI_API_KEY no Render.";
+    } else if (status === 404) {
+      providerMessage = "O modelo configurado do Gemini nao esta disponivel. Use GEMINI_MODEL=gemini-3.6-flash.";
+    } else if (status === 429) {
+      providerMessage = "A cota do Gemini foi excedida. Verifique o limite gratuito ou o faturamento do projeto no Google AI Studio.";
+    }
+
+    const providerError = new Error(providerMessage);
     providerError.status = 502;
     throw providerError;
   }
