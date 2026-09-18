@@ -30,6 +30,42 @@ function riskStyle(risk) {
 }
 
 function buildAnalysisSections(analysis, details, conditionTitle) {
+  const report = analysis.result?.report || analysis.report;
+
+  if (report?.summary) {
+    const reportSections = [
+      {
+        title: "Resumo clinico",
+        text: report.summary
+      },
+      {
+        title: "Achados relevantes",
+        items: report.relevantFindings
+      },
+      {
+        title: "Possiveis explicacoes",
+        items: report.possibleExplanations
+      },
+      {
+        title: "Sinais de alerta",
+        description: "Procure atendimento medico com prioridade se algum destes sinais aparecer:",
+        items: report.redFlags
+      },
+      {
+        title: "Proximos passos",
+        items: report.nextSteps
+      },
+      {
+        title: "Perguntas para levar ao medico",
+        items: report.questionsForClinician
+      }
+    ].filter((section) => section.text || section.items?.length);
+
+    if (reportSections.length) {
+      return reportSections;
+    }
+  }
+
   const condition = analysis.possibleCondition || "uma condicao ainda em avaliacao";
   const risk = analysis.riskLevel || "Moderado";
   const confidence = analysis.confidence || 0;

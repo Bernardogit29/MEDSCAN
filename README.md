@@ -31,6 +31,7 @@ Backend:
 - Multer
 - Bcrypt
 - JSON Web Token
+- Gemini API para relatorios orientativos em texto e imagem
 
 ## Estrutura
 
@@ -70,15 +71,15 @@ MEDSCAN/
 Exemplo:
 
 ```env
-PORT=5000
+PORT=3000
 MONGO_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/medscan?retryWrites=true&w=majority
 JWT_SECRET=um_segredo_forte
 JWT_EXPIRES_IN=7d
-AI_API_KEY=
-AI_API_URL=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-pro
 ```
 
-Se `AI_API_KEY` ou `AI_API_URL` não forem configuradas, o backend usa o mock em `src/services/aiService.js`.
+Gere a chave no Google AI Studio e configure `GEMINI_API_KEY` no arquivo local ou nas variaveis do Render. Se a chave nao for configurada, o backend usa uma triagem local de contingencia em `src/services/aiService.js`.
 
 ## Rodar o backend
 
@@ -91,7 +92,7 @@ npm run dev
 A API roda em:
 
 ```txt
-http://localhost:5000
+http://localhost:3000
 ```
 
 Rotas principais:
@@ -115,14 +116,14 @@ Rotas principais:
 Crie `medscan-app/.env` usando `medscan-app/.env.example` como base:
 
 ```env
-EXPO_PUBLIC_API_URL=http://localhost:5000/api
+EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ```
 
 Use a URL correta para seu ambiente:
 
-- Web ou iOS Simulator: `http://localhost:5000/api`
-- Android Emulator: `http://10.0.2.2:5000/api`
-- Celular físico: `http://SEU_IP_NA_REDE:5000/api`
+- Web ou iOS Simulator: `http://localhost:3000/api`
+- Android Emulator: `http://10.0.2.2:3000/api`
+- Celular físico: `http://SEU_IP_NA_REDE:3000/api`
 
 Depois rode:
 

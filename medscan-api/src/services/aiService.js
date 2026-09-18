@@ -1,8 +1,8 @@
 const fs = require("fs/promises");
 const axios = require("axios");
 
-const OPENAI_BASE_URL = "https://api.openai.com/v1";
-const DEFAULT_MODEL = "gpt-5.4-mini";
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_MODEL = "gemini-2.5-pro";
 const MAX_INLINE_IMAGE_BYTES = 8 * 1024 * 1024;
 
 const medicalDisclaimer =
@@ -66,12 +66,100 @@ const fallbackRules = [
   }
 ];
 
+const analysisResponseSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    possibleCondition: {
+      type: "string",
+      description: "Uma possibilidade ou grupo de sinais para investigar, nunca um diagnostico definitivo."
+    },
+    riskLevel: {
+      type: "string",
+      enum: ["Baixo", "Moderado", "Alto"]
+    },
+    confidence: {
+      type: "integer",
+      minimum: 0,
+      maximum: 100,
+      description: "Confianca estimada na triagem, nao uma probabilidade de diagnostico."
+    },
+    recommendation: {
+      type: "string",
+      description: "Orientacao pratica e segura sobre o proximo passo."
+    },
+    details: {
+      type: "string",
+      description: "Relatorio detalhado em portugues, explicando o raciocinio, limites e o que deve ser observado."
+    },
+    visualFindings: {
+      type: "string",
+      description: "Somente achados visuais observaveis; se nao houver imagem, use uma string vazia."
+    },
+    report: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        summary: { type: "string" },
+        relevantFindings: {
+          type: "array",
+          items: { type: "string" }
+        },
+        possibleExplanations: {
+          type: "array",
+          items: { type: "string" }
+        },
+        redFlags: {
+          type: "array",
+          items: { type: "string" }
+        },
+        nextSteps: {
+          type: "array",
+          items: { type: "string" }
+        },
+        questionsForClinician: {
+          type: "array",
+          items: { type: "string" }
+        }
+      },
+      required: [
+        "summary",
+        "relevantFindings",
+        "possibleExplanations",
+        "redFlags",
+        "nextSteps",
+        "questionsForClinician"
+      ]
+    }
+  },
+  required: [
+    "possibleCondition",
+    "riskLevel",
+    "confidence",
+    "recommendation",
+    "details",
+    "visualFindings",
+    "report"
+  ]
+};
+
 function normalizeText(value = "") {
   return value
     .toString()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function createFallbackReport(baseResult) {
+  return {
+    summary: baseResult.details,
+    relevantFindings: ["Os dados informados foram considerados para uma triagem inicial."],
+    possibleExplanations: [baseResult.possibleCondition],
+    redFlags: ["Piora rapida, dor intensa, falta de ar, desmaio ou confusao exigem atendimento."],
+    nextSteps: [baseResult.recommendation],
+    questionsForClinician: ["Ha quanto tempo os sintomas estao presentes?", "O que melhora ou piora os sintomas?"]
+  };
 }
 
 function buildLocalFallback(symptoms = "", image) {
@@ -93,6 +181,8 @@ function buildLocalFallback(symptoms = "", image) {
   return {
     ...baseResult,
     details: `${baseResult.details} ${medicalDisclaimer}`,
+    visualFindings: "",
+    report: createFallbackReport(baseResult),
     source: "local-fallback",
     symptoms,
     imageReceived: Boolean(image)
@@ -114,36 +204,75 @@ function safeJsonParse(value) {
     return JSON.parse(cleaned);
   } catch (_error) {
     const match = cleaned.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : null;
+
+    if (!match) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(match[0]);
+    } catch (_parseError) {
+      return null;
+    }
   }
 }
 
-function extractResponseText(data) {
-  if (data.output_text) {
-    return data.output_text;
-  }
-
-  const output = Array.isArray(data.output) ? data.output : [];
-  return output
-    .flatMap((item) => item.content || [])
-    .map((content) => content.text || "")
+function extractGeminiResponseText(data) {
+  return (data.candidates || [])
+    .flatMap((candidate) => candidate.content?.parts || [])
+    .map((part) => part.text || "")
     .join("\n")
     .trim();
+}
+
+function asStringArray(value, fallback) {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  const items = value.map((item) => String(item).trim()).filter(Boolean);
+  return items.length ? items : fallback;
+}
+
+function normalizeReport(data, fallback) {
+  const report = data?.report;
+
+  if (!report || typeof report !== "object") {
+    return fallback.report;
+  }
+
+  return {
+    summary: report.summary || fallback.report.summary,
+    relevantFindings: asStringArray(report.relevantFindings, fallback.report.relevantFindings),
+    possibleExplanations: asStringArray(
+      report.possibleExplanations,
+      fallback.report.possibleExplanations
+    ),
+    redFlags: asStringArray(report.redFlags, fallback.report.redFlags),
+    nextSteps: asStringArray(report.nextSteps, fallback.report.nextSteps),
+    questionsForClinician: asStringArray(
+      report.questionsForClinician,
+      fallback.report.questionsForClinician
+    )
+  };
 }
 
 function normalizeAnalysis(data, fallback) {
   return {
     possibleCondition: data.possibleCondition || data.condition || fallback.possibleCondition,
-    riskLevel: data.riskLevel || data.risk || fallback.riskLevel,
-    confidence: Number(data.confidence || fallback.confidence),
+    riskLevel: ["Baixo", "Moderado", "Alto"].includes(data.riskLevel)
+      ? data.riskLevel
+      : fallback.riskLevel,
+    confidence: Math.max(0, Math.min(100, Number(data.confidence) || fallback.confidence)),
     recommendation: data.recommendation || fallback.recommendation,
     details: data.details || fallback.details,
-    visualFindings: data.visualFindings || data.imageFindings || "",
-    source: "openai"
+    visualFindings: data.visualFindings || data.imageFindings || fallback.visualFindings,
+    report: normalizeReport(data, fallback),
+    source: "gemini"
   };
 }
 
-async function buildImageContent(image) {
+async function buildImagePart(image) {
   if (!image?.path || !image?.mimetype?.startsWith("image/")) {
     return null;
   }
@@ -157,80 +286,93 @@ async function buildImageContent(image) {
   const base64Image = await fs.readFile(image.path, "base64");
 
   return {
-    type: "input_image",
-    image_url: `data:${image.mimetype};base64,${base64Image}`
+    inlineData: {
+      mimeType: image.mimetype,
+      data: base64Image
+    }
   };
+}
+
+function buildGeminiEndpoint(model) {
+  const normalizedModel = model.replace(/^models\//, "").trim();
+  return `${GEMINI_BASE_URL}/models/${encodeURIComponent(normalizedModel)}:generateContent`;
 }
 
 async function analyzeMedicalData({ symptoms = "", image }) {
   const fallback = buildLocalFallback(symptoms, image);
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
 
-  if (!process.env.AI_API_KEY) {
+  if (!apiKey) {
     return {
       ...fallback,
-      source: "local-fallback-no-key"
+      source: "local-fallback-no-gemini-key"
     };
   }
 
-  const baseUrl = process.env.AI_API_URL || OPENAI_BASE_URL;
-  const endpoint = baseUrl.endsWith("/responses")
-    ? baseUrl
-    : `${baseUrl.replace(/\/$/, "")}/responses`;
-  const model = process.env.AI_MODEL || DEFAULT_MODEL;
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 
   try {
-    const imageContent = await buildImageContent(image);
+    const imagePart = await buildImagePart(image);
     const prompt = [
-      "Analise os dados enviados para uma triagem medica preliminar.",
-      "Responda somente em JSON valido, sem markdown, com os campos:",
-      "possibleCondition, riskLevel, confidence, recommendation, details, visualFindings.",
-      "riskLevel deve ser Baixo, Moderado ou Alto.",
-      "confidence deve ser um numero entre 0 e 100.",
-      "Nao de diagnostico definitivo e inclua orientacao para procurar atendimento quando necessario.",
-      "Se houver imagem, avalie apenas achados visuais observaveis e descreva incertezas.",
-      "Nao afirme diagnosticos definitivos a partir da imagem.",
-      `Sintomas: ${symptoms || "Nao informado"}`,
-      imageContent
+      "Analise os dados enviados para uma triagem medica preliminar e produza um relatorio completo em portugues do Brasil.",
+      "Nao invente informacoes. Separe claramente achados observados, possibilidades e limites da analise.",
+      "Nao forneca diagnostico definitivo, prescricao, dose de medicamento ou promessa de resultado.",
+      "Considere sinais de alerta e indique atendimento imediato quando houver risco.",
+      "Se houver imagem, descreva somente o que pode ser observado e informe quando a qualidade ou o contexto forem insuficientes.",
+      "Preencha todos os campos do JSON solicitado. Em arrays, inclua de 2 a 5 itens quando fizer sentido.",
+      `Sintomas ou descricao: ${symptoms || "Nao informado"}`,
+      imagePart
         ? `Imagem anexada para analise visual: ${image.filename || "sem nome"}, tipo ${image.mimetype}.`
         : image
           ? `Arquivo recebido, mas nao enviado para visao: ${image.filename || "sem nome"}, tipo ${image.mimetype || "desconhecido"}.`
           : "Imagem recebida: nao."
     ].join("\n");
 
-    const content = [{ type: "input_text", text: prompt }];
-
-    if (imageContent) {
-      content.push(imageContent);
+    const parts = [{ text: prompt }];
+    if (imagePart) {
+      parts.push(imagePart);
     }
 
     const response = await axios.post(
-      endpoint,
+      buildGeminiEndpoint(model),
       {
-        model,
-        reasoning: { effort: "low" },
-        instructions:
-          "Voce e um assistente de triagem medica. Seja cuidadoso, objetivo e nunca substitua consulta medica.",
-        input: [
+        systemInstruction: {
+          parts: [
+            {
+              text:
+                "Voce e um assistente de triagem medica cuidadoso. Responda em portugues do Brasil, com linguagem clara, detalhada e segura. A resposta e educativa e nao substitui profissional de saude."
+            }
+          ]
+        },
+        contents: [
           {
             role: "user",
-            content
+            parts
           }
-        ]
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseJsonSchema: analysisResponseSchema,
+          temperature: 0.2,
+          maxOutputTokens: 4096
+        }
       },
       {
+        params: {
+          key: apiKey
+        },
         headers: {
-          Authorization: `Bearer ${process.env.AI_API_KEY}`,
           "Content-Type": "application/json"
         },
-        timeout: 30000
+        timeout: 60000
       }
     );
 
-    const text = extractResponseText(response.data || {});
+    const text = extractGeminiResponseText(response.data || {});
     const parsed = safeJsonParse(text);
 
     if (!parsed) {
-      throw new Error("A resposta da IA nao veio em JSON valido.");
+      throw new Error("A resposta do Gemini nao veio em JSON valido.");
     }
 
     return normalizeAnalysis(parsed, fallback);
@@ -238,14 +380,14 @@ async function analyzeMedicalData({ symptoms = "", image }) {
     const status = error.response?.status;
     const apiMessage = error.response?.data?.error?.message;
     console.warn(
-      "Falha na API externa de IA. Retornando fallback local:",
+      "Falha na API do Gemini. Retornando fallback local:",
       status ? `status ${status}` : error.message,
       apiMessage || ""
     );
 
     return {
       ...fallback,
-      source: "local-fallback-api-error"
+      source: "local-fallback-gemini-error"
     };
   }
 }
