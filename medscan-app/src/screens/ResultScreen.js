@@ -39,6 +39,10 @@ function buildAnalysisSections(analysis, details, conditionTitle) {
         text: report.summary
       },
       {
+        title: "Explicacao detalhada",
+        text: analysis.details
+      },
+      {
         title: "Achados relevantes",
         items: report.relevantFindings
       },
@@ -56,8 +60,16 @@ function buildAnalysisSections(analysis, details, conditionTitle) {
         items: report.nextSteps
       },
       {
+        title: "Quando buscar atendimento",
+        text: report.whenToSeekCare
+      },
+      {
         title: "Perguntas para levar ao medico",
         items: report.questionsForClinician
+      },
+      {
+        title: "Limites desta analise",
+        text: report.limitations
       }
     ].filter((section) => section.text || section.items?.length);
 
@@ -198,6 +210,15 @@ function shortCondition(condition = "Em avaliacao") {
 
 function buildRecommendation(analysis, conditionTitle) {
   const risk = analysis.riskLevel || "Moderado";
+  const aiRecommendation = analysis.recommendation?.trim();
+
+  if (aiRecommendation) {
+    return {
+      title: "Orientacao principal",
+      detail: aiRecommendation
+    };
+  }
+
   const context = [
     conditionTitle,
     analysis.possibleCondition,

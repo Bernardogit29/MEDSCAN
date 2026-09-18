@@ -117,10 +117,12 @@ const analysisResponseSchema = {
           type: "array",
           items: { type: "string" }
         },
+        whenToSeekCare: { type: "string" },
         questionsForClinician: {
           type: "array",
           items: { type: "string" }
-        }
+        },
+        limitations: { type: "string" }
       },
       required: [
         "summary",
@@ -128,7 +130,9 @@ const analysisResponseSchema = {
         "possibleExplanations",
         "redFlags",
         "nextSteps",
-        "questionsForClinician"
+        "whenToSeekCare",
+        "questionsForClinician",
+        "limitations"
       ]
     }
   },
@@ -158,7 +162,9 @@ function createFallbackReport(baseResult) {
     possibleExplanations: [baseResult.possibleCondition],
     redFlags: ["Piora rapida, dor intensa, falta de ar, desmaio ou confusao exigem atendimento."],
     nextSteps: [baseResult.recommendation],
-    questionsForClinician: ["Ha quanto tempo os sintomas estao presentes?", "O que melhora ou piora os sintomas?"]
+    whenToSeekCare: "Procure atendimento imediatamente se houver piora rapida ou qualquer sinal de alerta.",
+    questionsForClinician: ["Ha quanto tempo os sintomas estao presentes?", "O que melhora ou piora os sintomas?"],
+    limitations: "Esta triagem nao substitui historia clinica, exame fisico ou avaliacao de um profissional."
   };
 }
 
@@ -250,10 +256,12 @@ function normalizeReport(data, fallback) {
     ),
     redFlags: asStringArray(report.redFlags, fallback.report.redFlags),
     nextSteps: asStringArray(report.nextSteps, fallback.report.nextSteps),
+    whenToSeekCare: report.whenToSeekCare || fallback.report.whenToSeekCare,
     questionsForClinician: asStringArray(
       report.questionsForClinician,
       fallback.report.questionsForClinician
-    )
+    ),
+    limitations: report.limitations || fallback.report.limitations
   };
 }
 
@@ -314,12 +322,15 @@ async function analyzeMedicalData({ symptoms = "", image }) {
   try {
     const imagePart = await buildImagePart(image);
     const prompt = [
-      "Analise os dados enviados para uma triagem medica preliminar e produza um relatorio completo em portugues do Brasil.",
-      "Nao invente informacoes. Separe claramente achados observados, possibilidades e limites da analise.",
-      "Nao forneca diagnostico definitivo, prescricao, dose de medicamento ou promessa de resultado.",
-      "Considere sinais de alerta e indique atendimento imediato quando houver risco.",
-      "Se houver imagem, descreva somente o que pode ser observado e informe quando a qualidade ou o contexto forem insuficientes.",
-      "Preencha todos os campos do JSON solicitado. Em arrays, inclua de 2 a 5 itens quando fizer sentido.",
+      "Analise os dados enviados para uma triagem medica preliminar e produza um relatorio completo, claro e aprofundado em portugues do Brasil.",
+      "Escreva como uma explicacao educativa de alta qualidade: comece com uma leitura humana do que a pessoa relatou, depois explique o que pode significar e organize a resposta em secoes praticas.",
+      "Nao invente informacoes. Use somente os dados enviados e deixe explicito quando algo nao foi informado.",
+      "Diferencie achados observados, possibilidades e diagnostico. Nunca apresente uma possibilidade como diagnostico confirmado.",
+      "Nao forneca prescricao, dose de medicamento ou promessa de resultado. Para qualquer conduta individual, oriente avaliacao profissional.",
+      "Crie orientacoes seguras e especificas para o quadro informado, sem conselhos genericos repetidos.",
+      "Detalhe sinais de alerta, quando procurar pronto atendimento e quando marcar uma consulta, considerando a gravidade descrita.",
+      "Se houver imagem, descreva somente achados visuais observaveis, qualidade da imagem e limites; nao confirme doencas pela imagem.",
+      "Preencha todos os campos do JSON. O campo details deve ter varios paragrafos informativos. Use de 3 a 6 itens nos arrays quando houver informacao suficiente.",
       `Sintomas ou descricao: ${symptoms || "Nao informado"}`,
       imagePart
         ? `Imagem anexada para analise visual: ${image.filename || "sem nome"}, tipo ${image.mimetype}.`
@@ -340,7 +351,7 @@ async function analyzeMedicalData({ symptoms = "", image }) {
           parts: [
             {
               text:
-                "Voce e um assistente de triagem medica cuidadoso. Responda em portugues do Brasil, com linguagem clara, detalhada e segura. A resposta e educativa e nao substitui profissional de saude."
+                "Voce e um assistente de triagem medica cuidadoso. Responda em portugues do Brasil, com empatia, contexto e profundidade. Use linguagem acessivel, reconheca incertezas e priorize seguranca. A resposta e educativa e nao substitui profissional de saude."
             }
           ]
         },
@@ -353,8 +364,8 @@ async function analyzeMedicalData({ symptoms = "", image }) {
         generationConfig: {
           responseMimeType: "application/json",
           responseJsonSchema: analysisResponseSchema,
-          temperature: 0.2,
-          maxOutputTokens: 4096
+          temperature: 0.35,
+          maxOutputTokens: 8192
         }
       },
       {
