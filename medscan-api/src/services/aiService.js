@@ -32,7 +32,7 @@ const fallbackRules = [
     }
   },
   {
-    keywords: ["barriga", "abdominal", "diarreia", "vomitando", "estomago", "enjoo"],
+    keywords: ["barriga", "abdominal", "diarreia", "estomago", "fezes", "intestino", "gastrite", "refluxo", "colica"],
     result: {
       possibleCondition: "Desconforto gastrointestinal",
       riskLevel: "Baixo",
@@ -43,7 +43,7 @@ const fallbackRules = [
     }
   },
   {
-    keywords: ["cabeca", "enxaqueca", "tontura", "nausea", "vomito"],
+    keywords: ["dor de cabeca", "cabeca", "enxaqueca", "cefaleia", "tontura", "vertigem", "fotofobia", "nausea", "vomito"],
     result: {
       possibleCondition: "Cefaleia ou mal-estar neurologico inespecifico",
       riskLevel: "Moderado",
@@ -153,6 +153,143 @@ function normalizeText(value = "") {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+const contextDomains = [
+  {
+    id: "head",
+    label: "cabeca e sintomas neurologicos",
+    keywords: [
+      "dor de cabeca",
+      "cabeca",
+      "enxaqueca",
+      "cefaleia",
+      "migranea",
+      "tontura",
+      "vertigem",
+      "fotofobia",
+      "neurolog"
+    ]
+  },
+  {
+    id: "abdominal",
+    label: "abdomen e sistema digestivo",
+    keywords: [
+      "dor abdominal",
+      "abdominal",
+      "dor de barriga",
+      "barriga",
+      "estomago",
+      "desconforto gastrointestinal",
+      "gastrointestinal",
+      "intestino",
+      "diarreia",
+      "fezes",
+      "gastrite",
+      "refluxo",
+      "colica"
+    ]
+  },
+  {
+    id: "respiratory",
+    label: "sistema respiratorio",
+    keywords: ["tosse", "garganta", "coriza", "espirro", "resfriado", "gripe", "respiratorio"]
+  },
+  {
+    id: "cardiovascular",
+    label: "coracao e circulacao",
+    keywords: ["pressao", "peito", "palpitacao", "coracao", "falta de ar", "cardiovascular"]
+  },
+  {
+    id: "musculoskeletal",
+    label: "musculos e articulacoes",
+    keywords: [
+      "muscular",
+      "articular",
+      "tornozelo",
+      "joelho",
+      "ombro",
+      "punho",
+      "costas",
+      "lombar",
+      "pescoco"
+    ]
+  },
+  {
+    id: "skin",
+    label: "pele",
+    keywords: ["pele", "mancha", "pinta", "lesao", "coceira", "vermelhida", "dermatolog"]
+  }
+];
+
+function detectContextDomains(value) {
+  const normalized = normalizeText(value);
+
+  return contextDomains
+    .map((domain) => ({
+      ...domain,
+      score: domain.keywords.reduce(
+        (total, keyword) => total + (normalized.includes(keyword) ? 1 : 0),
+        0
+      )
+    }))
+    .filter((domain) => domain.score > 0)
+    .sort((left, right) => right.score - left.score);
+}
+
+function collectAnalysisText(data) {
+  const report = data?.report || {};
+  const values = [
+    data?.possibleCondition,
+    data?.recommendation,
+    data?.details,
+    data?.visualFindings,
+    report.summary,
+    report.whenToSeekCare,
+    report.limitations,
+    report.relevantFindings,
+    report.possibleExplanations,
+    report.redFlags,
+    report.nextSteps,
+    report.questionsForClinician
+  ];
+
+  return values
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function hasContextMismatch(data, symptoms) {
+  const requestedDomains = detectContextDomains(symptoms);
+  if (!requestedDomains.length) {
+    return false;
+  }
+
+  const requestedIds = new Set(requestedDomains.map((domain) => domain.id));
+  const responseDomains = detectContextDomains(collectAnalysisText(data));
+  const responseSupportsRequestedDomain = responseDomains.some((domain) =>
+    requestedIds.has(domain.id)
+  );
+
+  return responseDomains.some((domain) => !requestedIds.has(domain.id) && domain.score >= 2)
+    || (!responseSupportsRequestedDomain && responseDomains.some((domain) => !requestedIds.has(domain.id)));
+}
+
+function buildContextInstruction(symptoms) {
+  const domains = detectContextDomains(symptoms);
+
+  if (!domains.length) {
+    return "Mantenha toda a resposta ancorada exatamente na descricao enviada; nao invente uma queixa principal.";
+  }
+
+  const focus = domains.map((domain) => domain.label).join(" e ");
+  return [
+    `FOCO OBRIGATORIO: a queixa enviada esta relacionada a ${focus}.`,
+    "Nao troque essa queixa por outro sistema do corpo.",
+    "Se houver sintomas associados, trate-os como associados e mantenha a queixa principal no centro do relatorio.",
+    "Se os dados forem insuficientes, diga que sao insuficientes em vez de inventar outra condicao."
+  ].join(" ");
 }
 
 function createFallbackReport(baseResult) {
@@ -306,6 +443,52 @@ function buildGeminiEndpoint(model) {
   return `${GEMINI_BASE_URL}/models/${encodeURIComponent(normalizedModel)}:generateContent`;
 }
 
+async function requestGemini({ model, apiKey, parts }) {
+  const response = await axios.post(
+    buildGeminiEndpoint(model),
+    {
+      systemInstruction: {
+        parts: [
+          {
+            text:
+              "Voce e um assistente de triagem medica cuidadoso. Responda em portugues do Brasil, com empatia, contexto e profundidade. Use linguagem acessivel, reconheca incertezas e priorize seguranca. A resposta e educativa e nao substitui profissional de saude."
+          }
+        ]
+      },
+      contents: [
+        {
+          role: "user",
+          parts
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseJsonSchema: analysisResponseSchema,
+        temperature: 0.35,
+        maxOutputTokens: 8192
+      }
+    },
+    {
+      params: {
+        key: apiKey
+      },
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 60000
+    }
+  );
+
+  const text = extractGeminiResponseText(response.data || {});
+  const parsed = safeJsonParse(text);
+
+  if (!parsed) {
+    throw new Error("A resposta do Gemini nao veio em JSON valido.");
+  }
+
+  return parsed;
+}
+
 async function analyzeMedicalData({ symptoms = "", image }) {
   const fallback = buildLocalFallback(symptoms, image);
   const apiKey = process.env.GEMINI_API_KEY?.trim();
@@ -322,6 +505,7 @@ async function analyzeMedicalData({ symptoms = "", image }) {
   try {
     const imagePart = await buildImagePart(image);
     const prompt = [
+      buildContextInstruction(symptoms),
       "Analise os dados enviados para uma triagem medica preliminar e produza um relatorio completo, claro e aprofundado em portugues do Brasil.",
       "Escreva como uma explicacao educativa de alta qualidade: comece com uma leitura humana do que a pessoa relatou, depois explique o que pode significar e organize a resposta em secoes praticas.",
       "Nao invente informacoes. Use somente os dados enviados e deixe explicito quando algo nao foi informado.",
@@ -344,46 +528,27 @@ async function analyzeMedicalData({ symptoms = "", image }) {
       parts.push(imagePart);
     }
 
-    const response = await axios.post(
-      buildGeminiEndpoint(model),
-      {
-        systemInstruction: {
-          parts: [
-            {
-              text:
-                "Voce e um assistente de triagem medica cuidadoso. Responda em portugues do Brasil, com empatia, contexto e profundidade. Use linguagem acessivel, reconheca incertezas e priorize seguranca. A resposta e educativa e nao substitui profissional de saude."
-            }
-          ]
-        },
-        contents: [
-          {
-            role: "user",
-            parts
-          }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: analysisResponseSchema,
-          temperature: 0.35,
-          maxOutputTokens: 8192
+    let parsed = await requestGemini({ model, apiKey, parts });
+
+    if (hasContextMismatch(parsed, symptoms)) {
+      console.warn("Resposta do Gemini saiu do contexto. Solicitando nova resposta ancorada nos sintomas.");
+
+      const correctionParts = [
+        {
+          text: `${prompt}\n\nA resposta anterior saiu do contexto da queixa principal. Reescreva tudo agora mantendo apenas o sistema do corpo indicado pelos sintomas. Nao mencione outro sistema que nao foi informado.`
         }
-      },
-      {
-        params: {
-          key: apiKey
-        },
-        headers: {
-          "Content-Type": "application/json"
-        },
-        timeout: 60000
+      ];
+
+      if (imagePart) {
+        correctionParts.push(imagePart);
       }
-    );
 
-    const text = extractGeminiResponseText(response.data || {});
-    const parsed = safeJsonParse(text);
+      parsed = await requestGemini({ model, apiKey, parts: correctionParts });
 
-    if (!parsed) {
-      throw new Error("A resposta do Gemini nao veio em JSON valido.");
+      if (hasContextMismatch(parsed, symptoms)) {
+        console.warn("A segunda resposta do Gemini continuou fora do contexto. Interrompendo a analise para evitar resultado incoerente.");
+        throw new Error("O Gemini gerou uma resposta fora do contexto dos sintomas.");
+      }
     }
 
     return normalizeAnalysis(parsed, fallback);
@@ -391,15 +556,16 @@ async function analyzeMedicalData({ symptoms = "", image }) {
     const status = error.response?.status;
     const apiMessage = error.response?.data?.error?.message;
     console.warn(
-      "Falha na API do Gemini. Retornando fallback local:",
+      "Falha na API do Gemini:",
       status ? `status ${status}` : error.message,
       apiMessage || ""
     );
 
-    return {
-      ...fallback,
-      source: "local-fallback-gemini-error"
-    };
+    const providerError = new Error(
+      "O Gemini nao respondeu corretamente. Verifique a GEMINI_API_KEY, o modelo configurado e tente novamente."
+    );
+    providerError.status = 502;
+    throw providerError;
   }
 }
 

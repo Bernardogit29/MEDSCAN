@@ -332,15 +332,20 @@ export default function ResultScreen({ navigation, route }) {
                 <Text style={styles.summarySectionTitle}>{section.title}</Text>
                 {section.description ? <Text style={styles.summaryText}>{section.description}</Text> : null}
                 {section.text ? <Text style={styles.summaryText}>{section.text}</Text> : null}
-                {section.items?.map((item) => (
-                  <View key={`${section.title}-${item.label || item.text}`} style={styles.bulletRow}>
+                {section.items?.map((item, index) => {
+                  const itemLabel = typeof item === "string" ? "" : item.label;
+                  const itemText = typeof item === "string" ? item : item.text;
+
+                  return (
+                  <View key={`${section.title}-${index}-${itemLabel || itemText || "item"}`} style={styles.bulletRow}>
                     <Text style={styles.bulletDot}>•</Text>
                     <Text style={styles.bulletText}>
-                      {item.label ? <Text style={styles.bulletStrong}>{item.label}: </Text> : null}
-                      {item.text}
+                      {itemLabel ? <Text style={styles.bulletStrong}>{itemLabel}: </Text> : null}
+                      {itemText}
                     </Text>
                   </View>
-                ))}
+                  );
+                })}
               </View>
             ))}
           </View>
