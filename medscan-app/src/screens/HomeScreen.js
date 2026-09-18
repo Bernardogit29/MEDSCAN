@@ -119,7 +119,8 @@ export default function HomeScreen({ navigation }) {
       const { data } = await api.post("/ai/analyze", formData, {
         headers: {
           "Content-Type": "multipart/form-data"
-        }
+        },
+        timeout: 150000
       });
 
       navigation.navigate("Result", {
@@ -129,7 +130,9 @@ export default function HomeScreen({ navigation }) {
     } catch (error) {
       const message =
         error.response?.data?.message ||
-        "Nao foi possivel chamar o backend agora. Verifique se a API esta ligada na porta 3000 e tente novamente.";
+        (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT"
+          ? "A analise demorou mais que o esperado. Aguarde alguns segundos e tente novamente."
+          : "Nao foi possivel concluir a analise agora. Verifique sua conexao e tente novamente.");
 
       Alert.alert("Analise nao concluida", message);
     } finally {

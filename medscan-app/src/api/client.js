@@ -66,7 +66,7 @@ export const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 8000
+  timeout: 30000
 });
 
 export function setAuthToken(token) {
