@@ -6,30 +6,36 @@ const monitoringSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
+  monitoredPersonId: { type: String, default: "self" },
+  source: { type: String, enum: ["legacy", "recorded"], default: "legacy" },
+  measuredAt: { type: Date, default: Date.now },
+  note: { type: String, default: "", maxlength: 500 },
   heartRate: {
     type: Number,
-    default: 82
+    default: null
   },
   glucose: {
     type: Number,
-    default: 98
+    default: null
   },
   bloodPressure: {
     type: String,
-    default: "120/80"
+    default: null
   },
   sleep: {
     type: String,
-    default: "7h 30m"
+    default: null
   },
   status: {
     type: String,
-    default: "Estável"
+    default: "EstÃ¡vel"
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+monitoringSchema.index({ userId: 1, monitoredPersonId: 1, measuredAt: -1 });
 
 module.exports = mongoose.model("Monitoring", monitoringSchema);

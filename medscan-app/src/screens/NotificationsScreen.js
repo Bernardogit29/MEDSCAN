@@ -3,8 +3,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
-import Header from "../components/Header";
-import { colors, radius, shadows } from "../constants/theme";
+import BrandHero from "../components/BrandHero";
+import { fontFamily, colors, radius, shadows } from "../constants/theme";
 import { mockNotifications } from "../utils/mockData";
 
 function iconForType(type) {
@@ -26,12 +26,12 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header
-          title="Notificacoes"
+        <BrandHero
+          title="Notificações"
           subtitle="Alertas, lembretes e atualizacoes recentes"
           onBack={() => navigation.goBack()}
-          showBell={false}
         />
+        <View style={styles.body}>
 
         <View style={styles.list}>
           {mockNotifications.map((notification) => {
@@ -61,6 +61,7 @@ export default function NotificationsScreen({ navigation }) {
             );
           })}
         </View>
+        </View>
       </ScrollView>
       <BottomTab navigation={navigation} active="Profile" />
     </SafeAreaView>
@@ -72,10 +73,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background
   },
-  content: {
-    padding: 22,
-    paddingBottom: 130
-  },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 130 },
+  body: { padding: 20, gap: 17 },
   list: {
     gap: 14
   },
@@ -110,8 +109,8 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily, fontSize: 16,
+    fontWeight: "700"
   },
   unreadDot: {
     width: 10,
@@ -121,13 +120,13 @@ const styles = StyleSheet.create({
   },
   description: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     lineHeight: 20,
     fontWeight: "600"
   },
   time: {
     color: colors.primary,
-    fontSize: 13,
-    fontWeight: "900"
+    fontFamily, fontSize: 13,
+    fontWeight: "700"
   }
 });

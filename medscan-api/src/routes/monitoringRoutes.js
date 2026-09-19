@@ -2,6 +2,7 @@ const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
 const {
   getMonitoring,
+  getMonitoringHistory,
   createMonitoring,
   getDevices,
   createDevice
@@ -9,6 +10,7 @@ const {
 
 const router = express.Router();
 
+router.get("/monitoring/history", authMiddleware, getMonitoringHistory);
 router.get("/monitoring", authMiddleware, getMonitoring);
 router.post("/monitoring", authMiddleware, createMonitoring);
 router.get("/devices", authMiddleware, getDevices);

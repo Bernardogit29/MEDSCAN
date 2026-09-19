@@ -1,10 +1,14 @@
+import { Platform } from "react-native";
+
+export const fontFamily = Platform.select({ web: "Segoe UI, Arial, sans-serif", ios: "System", default: "sans-serif" });
+
 export const colors = {
-  primary: "#006D64",
-  primaryMedium: "#008C7A",
-  primaryLight: "#DFF4EF",
-  text: "#0B2239",
-  textMuted: "#64748B",
-  background: "#F8FCFB",
+  primary: "#075E52",
+  primaryMedium: "#099D86",
+  primaryLight: "#E3F6F0",
+  text: "#173D36",
+  textMuted: "#71847E",
+  background: "#F5FAF8",
   white: "#FFFFFF",
   border: "#E3EEE9",
   danger: "#DC2626",
@@ -32,14 +36,14 @@ export const radius = {
 
 export const shadows = {
   card: {
-    shadowColor: "#0B2239",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowColor: "#173D36",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.035,
     shadowRadius: 18,
-    elevation: 4
+    elevation: 1
   },
   soft: {
-    shadowColor: "#006D64",
+    shadowColor: "#075E52",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.12,
     shadowRadius: 20,

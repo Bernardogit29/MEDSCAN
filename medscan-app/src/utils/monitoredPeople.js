@@ -11,8 +11,8 @@ const defaultVitals = {
 export function createCurrentUserPerson(user = {}) {
   return {
     id: "self",
-    name: user.name || "Voce",
-    age: user.age || null,
+    name: user?.name || "Voce",
+    age: user?.age || null,
     relation: "Meu monitoramento",
     status: "Estavel",
     icon: "account-circle",

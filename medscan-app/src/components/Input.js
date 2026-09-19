@@ -1,7 +1,7 @@
 import React from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius } from "../constants/theme";
+import { fontFamily, colors, radius } from "../constants/theme";
 
 export default function Input({
   label,
@@ -20,6 +20,7 @@ export default function Input({
       <View style={[styles.inputWrapper, multiline && styles.multilineWrapper]}>
         {icon ? <MaterialCommunityIcons name={icon} size={22} color={colors.primary} /> : null}
         <TextInput
+          accessibilityLabel={label || placeholder}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -44,7 +45,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.text,
     fontWeight: "800",
-    fontSize: 14
+    fontFamily, fontSize: 14
   },
   inputWrapper: {
     minHeight: 56,
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.text,
-    fontSize: 16,
+    fontFamily, fontSize: 16,
     fontWeight: "600"
   },
   webInput: {

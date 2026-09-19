@@ -4,14 +4,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import Logo from "../components/Logo";
+import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
-import { colors } from "../constants/theme";
+import { fontFamily, colors } from "../constants/theme";
 
 export default function RegisterScreen({ navigation }) {
   const { register, loading } = useAuth();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,33 +34,17 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
+    setErrorMessage("");
     try {
       await register(name.trim(), email.trim(), numericAge, password);
       navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (error) {
-      const fallbackMessage = error.response
-        ? "Tente novamente em instantes."
-        : "Nao foi possivel conectar ao servidor. Verifique se a API esta rodando e tente novamente.";
-
-      Alert.alert(
-        "Nao foi possivel cadastrar",
-        error.response?.data?.message || fallbackMessage
-      );
+      setErrorMessage(error.message || "Não foi possível conectar. Tente novamente.");
     }
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.keyboard}
-      >
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.top}>
-            <Logo compact />
-            <Text style={styles.title}>Criar conta</Text>
-          </View>
-
+    <AuthLayout title="Criar sua conta" subtitle="Seu primeiro passo para cuidar melhor de você." navigation={navigation}>
           <View style={styles.form}>
             <Input label="Nome" icon="account-outline" value={name} onChangeText={setName} placeholder="Seu nome" />
             <Input
@@ -94,6 +79,8 @@ export default function RegisterScreen({ navigation }) {
               secureTextEntry
               placeholder="Repita a senha"
             />
+          {errorMessage ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontFamily, lineHeight: 22 }}>{errorMessage}</Text> : null}
+          {loading ? <Text style={{ color: colors.textMuted, fontFamily, fontSize: 13, lineHeight: 20 }}>Conectando com segurança. O primeiro acesso pode levar até um minuto.</Text> : null}
             <Button title="Criar conta" icon="account-check-outline" onPress={handleRegister} loading={loading} />
           </View>
 
@@ -101,9 +88,7 @@ export default function RegisterScreen({ navigation }) {
             <MaterialCommunityIcons name="login" size={20} color={colors.primary} />
             <Text style={styles.link}>Ja tem conta? Fazer login</Text>
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AuthLayout>
   );
 }
 
@@ -128,8 +113,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: "900",
+    fontFamily, fontSize: 28,
+    fontWeight: "700",
     letterSpacing: 0
   },
   form: {
@@ -143,7 +128,7 @@ const styles = StyleSheet.create({
   },
   link: {
     color: colors.primary,
-    fontWeight: "900",
-    fontSize: 15
+    fontWeight: "700",
+    fontFamily, fontSize: 15
   }
 });

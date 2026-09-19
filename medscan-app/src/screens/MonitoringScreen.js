@@ -7,11 +7,11 @@ import BottomTab from "../components/BottomTab";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import DeviceCard from "../components/DeviceCard";
-import Header from "../components/Header";
+import BrandHero from "../components/BrandHero";
 import HealthCard from "../components/HealthCard";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { colors, radius } from "../constants/theme";
+import { fontFamily, colors, radius } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
@@ -23,7 +23,7 @@ import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function MonitoringScreen({ navigation }) {
   const { user } = useAuth();
-  const [monitoring, setMonitoring] = useState(mockMonitoring);
+  const [monitoring, setMonitoring] = useState({ vitals: {}, alerts: [] });
   const [devices, setDevices] = useState(mockDevices);
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [selectedPersonId, setSelectedPersonId] = useState(DEFAULT_MONITORED_PERSON_ID);
@@ -54,7 +54,7 @@ export default function MonitoringScreen({ navigation }) {
           }
         } catch (error) {
           if (mounted) {
-            setMonitoring(mockMonitoring);
+            setMonitoring({ vitals: {}, alerts: [] });
             setDevices(mockDevices);
           }
         }
@@ -87,8 +87,8 @@ export default function MonitoringScreen({ navigation }) {
   }, []);
 
   const selectedPerson = findMonitoredPerson(selectedPersonId, people);
-  const vitals = selectedPerson.vitals || monitoring.vitals || mockMonitoring.vitals;
-  const alerts = monitoring.alerts || mockMonitoring.alerts;
+  const vitals = monitoring.vitals || {};
+  const alerts = monitoring.alerts || [];
 
   async function selectPerson(personId) {
     setSelectedPersonId(personId);
@@ -99,11 +99,12 @@ export default function MonitoringScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header
-          onNotificationsPress={() => navigation.navigate("Notifications")}
+        <BrandHero
+          onNotifications={() => navigation.navigate("Notifications")}
           title="Monitoramento"
           subtitle="Acompanhe a saude em tempo real"
         />
+        <View style={styles.body}>
 
         <View style={styles.personArea}>
           <Card style={styles.personCard}>
@@ -114,11 +115,11 @@ export default function MonitoringScreen({ navigation }) {
               <View style={styles.personCopy}>
                 <Text style={styles.personName} numberOfLines={2}>{selectedPerson.name}</Text>
                 <Text style={styles.personMeta} numberOfLines={2}>
-                  {selectedPerson.age} anos | {selectedPerson.relation}
+                  {selectedPerson.age != null ? `${selectedPerson.age} anos | ` : ""}{selectedPerson.relation}
                 </Text>
                 <View style={styles.statusBadge}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>{selectedPerson.status}</Text>
+                  <Text style={styles.statusText}>{monitoring.monitoredPerson?.status || "Sem medições"}</Text>
                 </View>
               </View>
             </View>
@@ -189,20 +190,20 @@ export default function MonitoringScreen({ navigation }) {
 
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <MaterialCommunityIcons name="pulse" size={24} color={colors.info} />
+            <MaterialCommunityIcons name="pulse" size={24} color={colors.primary} />
             <Text style={styles.sectionTitle}>Sinais vitais</Text>
           </View>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.updated}>Atualizado agora</Text>
+            <Text style={styles.updated}>Medições registradas</Text>
             <MaterialCommunityIcons name="refresh" size={20} color={colors.textMuted} />
           </View>
         </View>
 
         <View style={styles.grid}>
-          <HealthCard title="Frequencia cardiaca" value={vitals.heartRate} unit="bpm" icon="heart-pulse" color="#EF4444" />
-          <HealthCard title="Glicose" value={vitals.glucose} unit="mg/dL" icon="water" color="#F43F5E" />
-          <HealthCard title="Pressao arterial" value={vitals.bloodPressure} unit="mmHg" icon="blood-bag" color={colors.info} />
-          <HealthCard title="Sono" value={vitals.sleep} unit="" icon="sleep" color={colors.purple} status="Bom" />
+          <HealthCard status="Registrado" title="Frequência cardíaca" value={vitals.heartRate ?? "—"} unit="bpm" icon="heart-pulse" color={colors.primary} />
+          <HealthCard status="Registrado" title="Glicose" value={vitals.glucose ?? "—"} unit="mg/dL" icon="water-outline" color={colors.primary} />
+          <HealthCard status="Registrado" title="Pressão arterial" value={vitals.bloodPressure ?? "—"} unit="mmHg" icon="gauge" color={colors.primary} />
+          <HealthCard title="Sono" value={vitals.sleep ?? "—"} unit="" icon="sleep" color={colors.primary} status="Registrado" />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -266,6 +267,7 @@ export default function MonitoringScreen({ navigation }) {
           icon="chart-line"
           onPress={() => Alert.alert("Monitoramento", "Cadastro manual de sinais vitais pronto para expansao.")}
         />
+        </View>
       </ScrollView>
       <BottomTab navigation={navigation} active="Monitoring" />
     </SafeAreaView>
@@ -277,11 +279,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background
   },
-  content: {
-    padding: 22,
-    paddingBottom: 130,
-    gap: 18
-  },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 130 },
+  body: { padding: 20, gap: 17 },
   personArea: {
     position: "relative",
     zIndex: 4
@@ -309,12 +308,12 @@ const styles = StyleSheet.create({
   },
   personName: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: "900"
+    fontFamily, fontSize: 20,
+    fontWeight: "700"
   },
   personMeta: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "700",
     marginTop: 4
   },
@@ -337,7 +336,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: "#11762D",
-    fontWeight: "900"
+    fontWeight: "700"
   },
   personActions: {
     flexDirection: "row",
@@ -362,8 +361,8 @@ const styles = StyleSheet.create({
   },
   profileButtonText: {
     color: colors.primary,
-    fontWeight: "900",
-    fontSize: 13
+    fontWeight: "700",
+    fontFamily, fontSize: 13
   },
   switchButton: {
     width: 48,
@@ -386,8 +385,8 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
+    fontFamily, fontSize: 16,
+    fontWeight: "700",
     marginBottom: 2
   },
   personOption: {
@@ -414,13 +413,13 @@ const styles = StyleSheet.create({
   },
   optionName: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily, fontSize: 16,
+    fontWeight: "700"
   },
   optionAge: {
     marginTop: 2,
     color: colors.textMuted,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "700"
   },
   currentBadge: {
@@ -431,8 +430,8 @@ const styles = StyleSheet.create({
   },
   currentText: {
     color: "#11762D",
-    fontSize: 12,
-    fontWeight: "900"
+    fontFamily, fontSize: 12,
+    fontWeight: "700"
   },
   addPersonOption: {
     minHeight: 68,
@@ -455,12 +454,12 @@ const styles = StyleSheet.create({
   },
   addPersonTitle: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily, fontSize: 16,
+    fontWeight: "700"
   },
   addPersonSubtitle: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "700",
     marginTop: 2
   },
@@ -478,18 +477,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: "900"
+    fontFamily, fontSize: 20,
+    fontWeight: "700"
   },
   updated: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "700"
   },
   link: {
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: "900"
+    fontFamily, fontSize: 14,
+    fontWeight: "700"
   },
   grid: {
     flexDirection: "row",
@@ -517,13 +516,13 @@ const styles = StyleSheet.create({
   },
   alertTitle: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily, fontSize: 16,
+    fontWeight: "700"
   },
   alertDescription: {
     marginTop: 3,
     color: colors.textMuted,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "700"
   },
   addDevice: {
@@ -551,13 +550,13 @@ const styles = StyleSheet.create({
   },
   addTitle: {
     color: colors.primary,
-    fontSize: 17,
-    fontWeight: "900"
+    fontFamily, fontSize: 17,
+    fontWeight: "700"
   },
   addSubtitle: {
     color: colors.textMuted,
     marginTop: 3,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "700"
   }
 });

@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors } from "../constants/theme";
+import { fontFamily, colors } from "../constants/theme";
 
 export default function Header({
   title,
@@ -27,10 +27,9 @@ export default function Header({
       </View>
       <View style={styles.actions}>
         {right}
-        {showBell ? (
+        {showBell && onNotificationsPress ? (
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.85} onPress={onNotificationsPress}>
             <MaterialCommunityIcons name="bell-outline" size={28} color={colors.primary} />
-            <View style={styles.dot} />
           </TouchableOpacity>
         ) : null}
         {showSettings ? (
@@ -62,16 +61,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 34,
-    fontWeight: "900",
+    fontFamily, fontSize: 27,
+    fontWeight: "700",
     letterSpacing: 0
   },
   subtitle: {
     marginTop: 6,
     color: colors.textMuted,
-    fontSize: 19,
-    fontWeight: "600",
-    lineHeight: 27
+    fontFamily, fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 21
   },
   actions: {
     flexDirection: "row",
@@ -79,9 +78,9 @@ const styles = StyleSheet.create({
     gap: 12
   },
   iconButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
@@ -89,7 +88,7 @@ const styles = StyleSheet.create({
   },
   plainIcon: {
     width: 42,
-    height: 58,
+    height: 44,
     alignItems: "center",
     justifyContent: "center"
   },

@@ -1,32 +1,37 @@
 import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius, shadows } from "../constants/theme";
+import { fontFamily, colors, radius, shadows } from "../constants/theme";
 
 const tabs = [
-  { route: "Home", label: "Início", icon: "home" },
-  { route: "History", label: "Histórico", icon: "file-document-outline" },
-  { route: "Monitoring", label: "Monitoramento", icon: "heart-pulse" },
+  { route: "Home", label: "Início", icon: "home-outline" },
+  { route: "History", label: "Prontuário", icon: "file-document-outline" },
+  { route: "Monitoring", label: "Monitorar", icon: "heart-pulse" },
   { route: "Profile", label: "Perfil", icon: "account-outline" }
 ];
 
 export default function BottomTab({ navigation, active = "Home" }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.shell}>
+    <View style={[styles.shell, { bottom: Math.max(insets.bottom, 12) }]}>
       {tabs.map((tab) => {
         const isActive = active === tab.route;
         return (
           <TouchableOpacity
             key={tab.route}
             onPress={() => {
-              if (!isActive) navigation.navigate(tab.route);
+              navigation.navigate(tab.route);
             }}
             activeOpacity={0.82}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={tab.label}
             style={styles.item}
           >
             <MaterialCommunityIcons
               name={tab.icon}
-              size={30}
+              size={23}
               color={isActive ? colors.primary : colors.textMuted}
             />
             <Text
@@ -47,10 +52,11 @@ export default function BottomTab({ navigation, active = "Home" }) {
 const styles = StyleSheet.create({
   shell: {
     position: "absolute",
-    left: 18,
-    right: 18,
+    width: "92%",
+    maxWidth: 680,
+    alignSelf: "center",
     bottom: 14,
-    minHeight: 82,
+    minHeight: 70,
     borderRadius: radius.xl,
     backgroundColor: colors.white,
     flexDirection: "row",
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   label: {
-    fontSize: 11,
+    fontFamily, fontSize: 11,
     color: colors.textMuted,
     fontWeight: "700",
     letterSpacing: 0

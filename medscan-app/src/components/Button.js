@@ -1,7 +1,7 @@
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius, shadows } from "../constants/theme";
+import { fontFamily, colors, radius, shadows } from "../constants/theme";
 
 export default function Button({
   title,
@@ -19,6 +19,9 @@ export default function Button({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       activeOpacity={0.86}
       onPress={onPress}
       disabled={disabled || loading}
@@ -84,7 +87,7 @@ const styles = StyleSheet.create({
     opacity: 0.65
   },
   text: {
-    fontSize: 17,
+    fontFamily, fontSize: 17,
     fontWeight: "800",
     letterSpacing: 0
   },

@@ -1,68 +1,27 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AuthLayout from "../components/AuthLayout";
 import Button from "../components/Button";
-import Logo from "../components/Logo";
-import { colors } from "../constants/theme";
+import { colors, fontFamily } from "../constants/theme";
 
 export default function WelcomeScreen({ navigation }) {
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.backgroundCrossTop} />
-      <View style={styles.backgroundCrossBottom} />
-      <View style={styles.content}>
-        <Logo />
-      </View>
-      <View style={styles.actions}>
-        <Button
-          title="Cadastrar"
-          icon="account-plus-outline"
-          onPress={() => navigation.navigate("Register")}
-        />
-        <Button
-          title="Login"
-          icon="login"
-          variant="outline"
-          onPress={() => navigation.navigate("Login")}
-        />
-      </View>
-    </SafeAreaView>
-  );
+  return <AuthLayout title="Seu cuidado, mais perto." subtitle="Entenda seus sintomas e acompanhe sua saúde." navigation={navigation}>
+    <Text style={styles.title}>Bem-vindo ao MEDSCAN</Text>
+    {[
+      ["creation", "Orientação com IA", "Conte o que sente e entenda os próximos passos."],
+      ["clipboard-text-outline", "Seu prontuário", "Mantenha suas análises e exames organizados."],
+      ["heart-pulse", "Tudo em um só lugar", "Acompanhe seu histórico de cuidado."]
+    ].map(([icon,title,description]) => <View key={title} style={styles.row}><View style={styles.icon}><MaterialCommunityIcons name={icon} size={22} color={colors.primary} /></View><View style={styles.copy}><Text style={styles.label}>{title}</Text><Text style={styles.description}>{description}</Text></View></View>)}
+    <Button title="Entrar na minha conta" onPress={() => navigation.navigate("Login")} />
+    <Button title="Criar conta" variant="outline" onPress={() => navigation.navigate("Register")} />
+  </AuthLayout>;
 }
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 26
-  },
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  actions: {
-    gap: 18,
-    paddingBottom: 42
-  },
-  backgroundCrossTop: {
-    position: "absolute",
-    top: 36,
-    right: -42,
-    width: 150,
-    height: 150,
-    borderRadius: 40,
-    backgroundColor: "rgba(223,244,239,0.72)",
-    transform: [{ rotate: "45deg" }]
-  },
-  backgroundCrossBottom: {
-    position: "absolute",
-    left: -44,
-    bottom: 168,
-    width: 130,
-    height: 130,
-    borderRadius: 34,
-    backgroundColor: "rgba(223,244,239,0.62)",
-    transform: [{ rotate: "45deg" }]
-  }
+  title: { fontFamily, fontSize: 21, color: colors.text, fontWeight: "700" },
+  row: { flexDirection: "row", gap: 12, alignItems: "center" },
+  icon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  copy: { flex: 1 },
+  label: { fontFamily, fontSize: 15, fontWeight: "600", color: colors.text },
+  description: { fontFamily, fontSize: 13, color: colors.textMuted, lineHeight: 20, marginTop: 4 }
 });

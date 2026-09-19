@@ -5,10 +5,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import Header from "../components/Header";
+import BrandHero from "../components/BrandHero";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { colors, radius } from "../constants/theme";
+import { fontFamily, colors, radius } from "../constants/theme";
 
 const settings = [
   { label: "Privacidade e Segurança", icon: "shield-lock-outline" },
@@ -127,11 +127,12 @@ export default function ProfileScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header
+        <BrandHero
           title="Perfil"
           subtitle="Gerencie seus dados e preferências"
-          onNotificationsPress={() => navigation.navigate("Notifications")}
+          onNotifications={() => navigation.navigate("Notifications")}
         />
+        <View style={styles.body}>
 
         <Card style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -200,6 +201,7 @@ export default function ProfileScreen({ navigation, route }) {
             <Text style={styles.logoutText}>Sair da conta</Text>
           </TouchableOpacity>
         </View>
+        </View>
       </ScrollView>
       <Modal visible={familyModalVisible} transparent animationType="slide" onRequestClose={() => setFamilyModalVisible(false)}>
         <View style={styles.modalBackdrop}>
@@ -238,11 +240,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background
   },
-  content: {
-    padding: 22,
-    paddingBottom: 130,
-    gap: 18
-  },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 130 },
+  body: { padding: 20, gap: 17 },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -262,18 +261,18 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.text,
-    fontSize: 23,
-    fontWeight: "900"
+    fontFamily, fontSize: 21,
+    fontWeight: "700"
   },
   email: {
     color: colors.textMuted,
-    fontSize: 15,
+    fontFamily, fontSize: 15,
     fontWeight: "700",
     marginTop: 4
   },
   age: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "700",
     marginTop: 3
   },
@@ -290,8 +289,8 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     color: "#11762D",
-    fontWeight: "900",
-    fontSize: 13
+    fontWeight: "700",
+    fontFamily, fontSize: 13
   },
   deviceSummary: {
     flexDirection: "row",
@@ -311,12 +310,12 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     color: colors.text,
-    fontSize: 17,
-    fontWeight: "900"
+    fontFamily, fontSize: 17,
+    fontWeight: "700"
   },
   summaryText: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "700",
     lineHeight: 20,
     marginTop: 4
@@ -326,8 +325,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: "900",
+    fontFamily, fontSize: 20,
+    fontWeight: "700",
     letterSpacing: 0,
     marginTop: 4
   },
@@ -348,12 +347,12 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: colors.text,
-    fontSize: 23,
-    fontWeight: "900"
+    fontFamily, fontSize: 21,
+    fontWeight: "700"
   },
   modalSubtitle: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "600",
     lineHeight: 20
   },
@@ -364,7 +363,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 14,
     color: colors.text,
-    fontSize: 16
+    fontFamily, fontSize: 16
   },
   modalActions: {
     flexDirection: "row",
@@ -392,7 +391,7 @@ const styles = StyleSheet.create({
   settingLabel: {
     flex: 1,
     color: colors.text,
-    fontSize: 16,
+    fontFamily, fontSize: 16,
     fontWeight: "800"
   },
   logoutRow: {
@@ -416,7 +415,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: colors.danger,
-    fontSize: 16,
-    fontWeight: "900"
+    fontFamily, fontSize: 16,
+    fontWeight: "700"
   }
 });

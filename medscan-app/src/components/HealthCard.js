@@ -1,20 +1,20 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius, shadows } from "../constants/theme";
+import { fontFamily, colors, radius, shadows } from "../constants/theme";
 
 export default function HealthCard({ title, value, unit, icon, color = colors.primary, status = "Normal" }) {
   return (
     <View style={styles.card}>
       <View style={[styles.iconCircle, { backgroundColor: `${color}16` }]}>
-        <MaterialCommunityIcons name={icon} size={34} color={color} />
+        <MaterialCommunityIcons name={icon} size={22} color={color} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.unit}>{unit}</Text>
       <View style={styles.badge}>
         <View style={styles.statusDot} />
-        <Text style={styles.badgeText}>{status}</Text>
+        <Text style={styles.badgeText}>{value == null || value === "—" ? "Sem medição" : status}</Text>
       </View>
     </View>
   );
@@ -23,38 +23,38 @@ export default function HealthCard({ title, value, unit, icon, color = colors.pr
 const styles = StyleSheet.create({
   card: {
     width: "48%",
-    minHeight: 176,
+    minHeight: 160,
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: 14,
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "#EEF4F2",
     ...shadows.card
   },
   iconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center"
   },
   title: {
     color: colors.text,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "800",
     textAlign: "center"
   },
   value: {
     color: colors.text,
-    fontSize: 31,
-    fontWeight: "900",
+    fontFamily, fontSize: 25,
+    fontWeight: "700",
     letterSpacing: 0
   },
   unit: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "700"
   },
   badge: {
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: "#11762D",
-    fontSize: 12,
-    fontWeight: "900"
+    fontFamily, fontSize: 12,
+    fontWeight: "700"
   }
 });

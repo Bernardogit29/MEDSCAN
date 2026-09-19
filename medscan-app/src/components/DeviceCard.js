@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius, shadows } from "../constants/theme";
+import { fontFamily, colors, radius, shadows } from "../constants/theme";
 
 function iconForType(type) {
   const map = {
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.text,
-    fontSize: 15,
+    fontFamily, fontSize: 15,
     fontWeight: "900",
     maxWidth: "100%"
   },
@@ -77,12 +77,12 @@ const styles = StyleSheet.create({
   },
   connected: {
     color: colors.success,
-    fontSize: 13,
+    fontFamily, fontSize: 13,
     fontWeight: "800"
   },
   battery: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontFamily, fontSize: 14,
     fontWeight: "800"
   }
 });

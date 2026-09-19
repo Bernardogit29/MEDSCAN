@@ -2,33 +2,12 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import api, { API_URL, setAuthToken } from "../api/client";
 import { getStoredItem, removeStoredItem, setStoredItem } from "../utils/storage";
 
+import { requestSession } from "../api/authRequest";
+
 const AuthContext = createContext(null);
 const SESSION_KEY = "medscan.session";
 
-async function authRequest(path, payload) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const response = await fetch(`${API_URL}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw { response: { data } };
-    }
-
-    return data;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+const authRequest = (path, payload) => requestSession(API_URL, path, payload);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

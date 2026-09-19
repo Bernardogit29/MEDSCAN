@@ -76,10 +76,10 @@ MONGO_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/medscan?retryWrites=tr
 JWT_SECRET=um_segredo_forte
 JWT_EXPIRES_IN=7d
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-pro
+GEMINI_MODEL=gemini-3.6-flash
 ```
 
-Gere a chave no Google AI Studio e configure `GEMINI_API_KEY` no arquivo local ou nas variaveis do Render. Se a chave nao for configurada, o backend usa uma triagem local de contingencia em `src/services/aiService.js`.
+Gere a chave no Google AI Studio e configure `GEMINI_API_KEY` no arquivo local ou nas variaveis do Render. A chave é obrigatória para análises. Sem ela, o backend retorna indisponibilidade (503). O modelo configurado é respeitado; confirme sua disponibilidade no projeto do Google.
 
 ## Rodar o backend
 
@@ -148,7 +148,7 @@ npm start
 
 ## Dados mockados
 
-O backend retorna análise mockada quando a API externa de IA não está configurada. O app também possui mocks locais para histórico, monitoramento, dispositivos e resultado caso o backend esteja indisponível durante testes de interface.
+O endpoint de análise não retorna resultados mockados: falhas de configuração, cota ou resposta incompleta são informadas ao app. O app também possui mocks locais para histórico, monitoramento, dispositivos e resultado caso o backend esteja indisponível durante testes de interface.
 
 ## Segurança
 
@@ -160,3 +160,22 @@ O backend retorna análise mockada quando a API externa de IA não está configu
 ## Observação médica
 
 Todas as análises são orientativas. Em caso de urgência, procure atendimento médico imediatamente.
+
+## Atualização de experiência e análise
+
+- Início com identidade verde e branca, acesso ao prontuário e à análise em tela própria. Os indicadores da Home ficam sem valores até existir uma fonte de medições confiável; não representam monitoramento ativo.
+- Formulário com sintomas, imagem, duração, intensidade e contexto opcional.
+- Resultado apresenta o relatório completo salvo em `analysis.result`, sem porcentagens de confiança inventadas. O botão de complemento leva o relato e as perguntas para uma nova análise; imagens precisam ser anexadas novamente.
+- Respostas estruturadas seguem o [formato JSON Schema da API Gemini](https://ai.google.dev/gemini-api/docs/structured-output). O serviço valida os campos antes de salvar. A validação estrutural não é validação clínica.
+- O filtro antigo que rejeitava menções a outros sistemas do corpo foi removido.
+
+Validação local: `node --test medscan-api/src/services/aiService.test.js`. Os testes simulam o provedor; uma avaliação clínica das respostas reais continua necessária. Para verificar o bundle web: `cd medscan-app` e `npx expo export --platform web`.
+
+Teste de interface sem Gemini/banco: execute `node scripts/preview-api.cjs`. Em outro terminal PowerShell, dentro de `medscan-app`, execute `$env:EXPO_PUBLIC_API_URL='http://localhost:3001/api'; npx expo start --web --port 8083` e abra `/analise`. Use somente relatos fictícios. Esta configuração é restrita ao processo de teste e não altera o `.env`. Encerre ambos os processos ao terminar.
+
+Os parâmetros clínicos de navegação permanecem em memória e não entram nas URLs. Teste: `node --test medscan-app/src/utils/navigationState.test.mjs`. O complemento mantém a pessoa do registro original; o formulário exige carregar o prontuário antes do envio.
+
+### Registros de monitoramento no prontuário
+`GET /api/monitoring/history?personId=self` retorna até 100 medições e comparações descritivas entre valores do mesmo indicador/pessoa. `POST /api/monitoring` aceita `monitoredPersonId`, `heartRate` (bpm), `glucose` (mg/dL), `measuredAt` (ISO; padrão agora) e `note`. Pelo menos um indicador deve ser informado. O formulário usa o horário do envio; os horários são exibidos no fuso local do aparelho. Não há detecção clínica de emergência ou integração com wearables nesta implementação.
+
+Registros antigos, criados com valores de demonstração e sem `source: recorded`, não entram nos relatórios. Publique o backend atualizado antes de usar os novos endpoints no app conectado ao Render. Testes: `node --test medscan-api/src/services/monitoringEvents.test.js medscan-api/src/controllers/monitoringController.test.js`.

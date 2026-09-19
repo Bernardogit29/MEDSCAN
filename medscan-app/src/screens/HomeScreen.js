@@ -1,330 +1,90 @@
-import React, { useState } from "react";
-import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from "react-native";
+import React from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import ActionRow from "../components/ActionRow";
+import BrandHero from "../components/BrandHero";
 import BottomTab from "../components/BottomTab";
-import Button from "../components/Button";
-import Card from "../components/Card";
-import Header from "../components/Header";
-import Input from "../components/Input";
-import MedicalNotice from "../components/MedicalNotice";
-import api from "../api/client";
+import ActionRow from "../components/ActionRow";
 import { useAuth } from "../context/AuthContext";
-import { colors, radius, shadows } from "../constants/theme";
-import {
-  DEFAULT_MONITORED_PERSON_ID,
-  MONITORED_PERSON_STORAGE_KEY,
-  getMonitoredPeople,
-  findMonitoredPerson
-} from "../utils/monitoredPeople";
-import { getStoredItem, setStoredItem } from "../utils/storage";
+import { fontFamily, colors } from "../constants/theme";
+
+const metrics = [
+  { title: "Glicose", icon: "water-outline", unit: "mg/dL" },
+  { title: "Frequência", icon: "heart-pulse", unit: "bpm" },
+  { title: "Pressão", icon: "gauge", unit: "mmHg" },
+  { title: "Atividade", icon: "shoe-print", unit: "passos" }
+];
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
-  const [symptoms, setSymptoms] = useState("");
-  const [selectedType, setSelectedType] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const firstName = user?.name?.split(" ")[0] || "Usuario";
-
-  async function pickImage(type) {
-    setSelectedType(type);
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      Alert.alert("Permissao necessaria", "Autorize o acesso a galeria para enviar imagens ou exames.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.85
-    });
-
-    if (!result.canceled && result.assets?.length) {
-      setSelectedImage(result.assets[0]);
-    }
-  }
-
-  async function appendImageToFormData(formData, image) {
-    const filename = image.fileName || `medscan-${Date.now()}.jpg`;
-    const mimeType = image.mimeType || "image/jpeg";
-
-    if (Platform.OS === "web") {
-      const response = await fetch(image.uri);
-      const blob = await response.blob();
-      formData.append("image", blob, filename);
-      return;
-    }
-
-    formData.append("image", {
-      uri: image.uri,
-      name: filename,
-      type: mimeType
-    });
-  }
-
-  async function handleAnalyze() {
-    if (!symptoms.trim() && !selectedImage) {
-      Alert.alert("Dados insuficientes", "Descreva sintomas ou selecione uma imagem para analise.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-      const storedPersonId = await getStoredItem(MONITORED_PERSON_STORAGE_KEY);
-      let monitoredPersonId = storedPersonId || DEFAULT_MONITORED_PERSON_ID;
-      let monitoredPerson = findMonitoredPerson(monitoredPersonId, getMonitoredPeople(user));
-
-      try {
-        const profileResponse = await api.get("/profile");
-        const profile = profileResponse.data.profile || {};
-        monitoredPerson = findMonitoredPerson(
-          monitoredPersonId,
-          getMonitoredPeople(profileResponse.data.user || user, profile.relatives || [])
-        );
-      } catch (_error) {
-        // The analysis request below will surface an API error if the profile cannot load.
-      }
-
-      if (monitoredPerson.id !== monitoredPersonId) {
-        monitoredPersonId = monitoredPerson.id;
-        await setStoredItem(MONITORED_PERSON_STORAGE_KEY, monitoredPersonId);
-      }
-
-      formData.append("symptoms", symptoms);
-      formData.append("type", selectedImage ? selectedType : "symptoms");
-      formData.append("monitoredPersonId", monitoredPerson.id);
-      formData.append("monitoredPersonName", monitoredPerson.name);
-
-      if (selectedImage) {
-        await appendImageToFormData(formData, selectedImage);
-      }
-
-      const { data } = await api.post("/ai/analyze", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        },
-        timeout: 150000
-      });
-
-      navigation.navigate("Result", {
-        analysis: data.analysis,
-        imageUri: selectedImage?.uri
-      });
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT"
-          ? "A analise demorou mais que o esperado. Aguarde alguns segundos e tente novamente."
-          : "Nao foi possivel concluir a analise agora. Verifique sua conexao e tente novamente.");
-
-      Alert.alert("Analise nao concluida", message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  const firstName = user?.name?.split(" ")[0] || "bem-vindo";
+  const date = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Header
-            onNotificationsPress={() => navigation.navigate("Notifications")}
-            title={`Ola, ${firstName}!`}
-            subtitle="Como podemos ajudar voce hoje?"
-          />
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <BrandHero title={`Olá, ${firstName}`} subtitle="Seu cuidado em um só lugar" badge="Seu espaço de saúde" onNotifications={() => navigation.navigate("Notifications")} />
 
-          <Card style={styles.hero}>
-            <View style={styles.pill}>
-              <MaterialCommunityIcons name="star-four-points" size={16} color={colors.white} />
-              <Text style={styles.pillText}>IA Medica</Text>
-            </View>
-            <Text style={styles.heroTitle}>Converse com a IA</Text>
-            <Text style={styles.heroText}>
-              Envie exames, imagens ou descreva seus sintomas e receba uma analise preliminar inteligente.
-            </Text>
-            <MaterialCommunityIcons name="medical-bag" size={120} color="rgba(255,255,255,0.12)" style={styles.heroIcon} />
-          </Card>
+        <View style={styles.body}>
+          <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Visão geral</Text><Text style={styles.link}>Hoje, {date}</Text></View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("History")} activeOpacity={0.9} style={styles.recordCard}>
+            <View pointerEvents="none" style={styles.cardHalo} />
+            <Text style={styles.eyebrow}>PRONTUÁRIO INTELIGENTE</Text>
+            <Text style={styles.cardTitle}>Seu histórico, mais claro.</Text>
+            <Text style={styles.cardCopy}>Suas análises e exames organizados{`\n`}para acompanhar sua evolução.</Text>
+            <View style={styles.cta}><Text style={styles.ctaText}>Ver prontuário</Text><MaterialCommunityIcons name="arrow-top-right" size={18} color={colors.primary} /></View>
+          </TouchableOpacity>
 
-          <Text style={styles.sectionTitle}>Enviar para analise</Text>
-          <View style={styles.options}>
-            <ActionRow
-              title="Enviar exame"
-              subtitle="Laboratoriais, sangue, urina, etc."
-              icon="file-document"
-              color={colors.primaryMedium}
-              selected={selectedType === "exam"}
-              onPress={() => pickImage("exam")}
-            />
-            <ActionRow
-              title="Enviar imagem"
-              subtitle="Pele, lesoes, radiografias, etc."
-              icon="camera"
-              color={colors.info}
-              selected={selectedType === "image"}
-              onPress={() => pickImage("image")}
-            />
-            <ActionRow
-              title="Descrever sintomas"
-              subtitle="Fale sobre o que voce esta sentindo"
-              icon="message-text"
-              color={colors.purple}
-              selected={selectedType === "symptoms"}
-              onPress={() => setSelectedType((currentType) => (currentType === "symptoms" ? null : "symptoms"))}
-            />
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Sinais vitais</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Monitoring")}><Text style={styles.link}>Ver monitoramento</Text></TouchableOpacity>
           </View>
-
-          {selectedImage ? (
-            <View style={styles.previewRow}>
-              <Image source={{ uri: selectedImage.uri }} style={styles.preview} />
-              <View style={styles.previewCopy}>
-                <Text style={styles.previewTitle}>Arquivo selecionado</Text>
-                <Text style={styles.previewText} numberOfLines={2}>
-                  {selectedImage.fileName || "Imagem pronta para analise"}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.removeButton}>
-                <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
+          <View style={styles.grid}>
+            {metrics.map(metric => (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${metric.title}: sem medição. Abrir monitoramento`} key={metric.title} style={styles.metric} onPress={() => navigation.navigate("Monitoring")}>
+                <View style={styles.metricHeader}><View style={styles.metricIcon}><MaterialCommunityIcons name={metric.icon} size={18} color={colors.primary} /></View><Text style={styles.metricLabel}>{metric.title}</Text></View>
+                <Text style={styles.metricValue}>—</Text>
+                <Text style={styles.metricUnit}>{metric.unit} · sem medição</Text>
               </TouchableOpacity>
-            </View>
-          ) : null}
+            ))}
+          </View>
+          <Text style={styles.metricNote}>Suas medições aparecerão quando houver dados conectados.</Text>
 
-          {selectedType === "symptoms" ? (
-            <Input
-              label="Sintomas"
-              icon="stethoscope"
-              multiline
-              value={symptoms}
-              onChangeText={setSymptoms}
-              placeholder="Descreva sintomas, duracao, intensidade e qualquer informacao relevante."
-            />
-          ) : null}
-
-          <Button title="Analisar com IA" icon="brain" onPress={handleAnalyze} loading={loading} />
-
-          <MedicalNotice title="Importante" />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <Text style={styles.sectionTitle}>Acesso rápido</Text>
+          <View style={styles.actions}>
+            <ActionRow title="Conversar com a IA" subtitle="Entenda seus sintomas com mais contexto" icon="creation" onPress={() => navigation.navigate("Analyze", { type: "symptoms" })} />
+            <ActionRow title="Adicionar exame" subtitle="Envie uma imagem do seu documento" icon="file-plus-outline" onPress={() => navigation.navigate("Analyze", { type: "exam" })} />
+          </View>
+          <View style={styles.footer}><MaterialCommunityIcons name="shield-check-outline" size={16} color={colors.textMuted} /><Text style={styles.footerText}>Informação para cuidar melhor de você.</Text></View>
+        </View>
+      </ScrollView>
       <BottomTab navigation={navigation} active="Home" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  flex: {
-    flex: 1
-  },
-  content: {
-    padding: 22,
-    paddingBottom: 130,
-    gap: 18
-  },
-  hero: {
-    backgroundColor: colors.primary,
-    minHeight: 250,
-    overflow: "hidden",
-    gap: 16
-  },
-  pill: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    flexDirection: "row",
-    gap: 7,
-    alignItems: "center"
-  },
-  pillText: {
-    color: colors.white,
-    fontWeight: "800",
-    fontSize: 14
-  },
-  heroTitle: {
-    color: colors.white,
-    fontSize: 31,
-    fontWeight: "900",
-    letterSpacing: 0
-  },
-  heroText: {
-    color: colors.white,
-    fontSize: 18,
-    lineHeight: 29,
-    fontWeight: "600",
-    maxWidth: "88%"
-  },
-  heroIcon: {
-    position: "absolute",
-    right: 16,
-    top: 68
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: 0
-  },
-  options: {
-    gap: 13
-  },
-  previewRow: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card
-  },
-  preview: {
-    width: 68,
-    height: 68,
-    borderRadius: 16,
-    backgroundColor: colors.primaryLight
-  },
-  previewCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  previewTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  previewText: {
-    marginTop: 3,
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: "600"
-  },
-  removeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F1F5F9"
-  }
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 110 },
+  body: { padding: 20, gap: 17 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 5, gap: 8 },
+  sectionTitle: { color: colors.text, fontFamily, fontSize: 16, fontWeight: "700", letterSpacing: -0.3 },
+  link: { color: colors.primary, fontFamily, fontSize: 11, fontWeight: "600", paddingVertical: 8 },
+  recordCard: { backgroundColor: colors.primary, borderRadius: 24, padding: 21, overflow: "hidden", shadowColor: colors.primary, shadowOpacity: 0.14, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  cardHalo: { position: "absolute", right: -45, bottom: -90, width: 200, height: 200, borderRadius: 100, borderWidth: 24, borderColor: "#ffffff08", backgroundColor: "#ffffff04" },
+  eyebrow: { color: "#C1F0E4", fontFamily, fontSize: 10, fontWeight: "700", letterSpacing: 1.3 },
+  cardTitle: { color: "white", fontFamily, fontSize: 21, fontWeight: "700", marginTop: 14, letterSpacing: -0.6 },
+  cardCopy: { color: "#DBF7EF", fontFamily, fontSize: 13, lineHeight: 20, marginTop: 7 },
+  cta: { alignSelf: "flex-start", backgroundColor: "#DDFFF2", flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, marginTop: 18 },
+  ctaText: { color: colors.primary, fontFamily, fontSize: 12, fontWeight: "700" },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 12 },
+  metric: { width: "48%", flexGrow: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 15 },
+  metricHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  metricIcon: { width: 27, height: 27, borderRadius: 8, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  metricLabel: { color: colors.textMuted, fontFamily, fontSize: 12 },
+  metricValue: { color: colors.text, fontFamily, fontSize: 25, fontWeight: "700", marginTop: 11 },
+  metricUnit: { color: colors.textMuted, fontFamily, fontSize: 10, marginTop: 3 },
+  metricNote: { color: colors.textMuted, fontFamily, fontSize: 11, lineHeight: 17, marginTop: -7 },
+  actions: { gap: 10 },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 },
+  footerText: { color: colors.textMuted, fontFamily, fontSize: 11 }
 });

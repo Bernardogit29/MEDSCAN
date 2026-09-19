@@ -4,12 +4,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import Logo from "../components/Logo";
+import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
-import { colors } from "../constants/theme";
+import { fontFamily, colors } from "../constants/theme";
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
   const { login, loading } = useAuth();
+  const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -23,32 +24,21 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
+    setErrorMessage("");
     try {
       await login(email.trim(), password);
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      if (route.params?.returnToPrevious && navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      }
     } catch (error) {
-      const fallbackMessage = error.response
-        ? "Confira suas credenciais e tente novamente."
-        : "Nao foi possivel conectar ao servidor. Verifique se a API esta rodando e tente novamente.";
-
-      Alert.alert(
-        "Nao foi possivel entrar",
-        error.response?.data?.message || fallbackMessage
-      );
+      setErrorMessage(error.message || "Não foi possível conectar. Tente novamente.");
     }
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.keyboard}
-      >
-        <View style={styles.top}>
-          <Logo compact />
-          <Text style={styles.title}>Entrar na sua conta</Text>
-        </View>
-
+    <AuthLayout title="Entrar na sua conta" subtitle="Acesse seu histórico e continue seu cuidado." navigation={navigation}>
         <View style={styles.form}>
           <Input
             label="E-mail"
@@ -66,6 +56,8 @@ export default function LoginScreen({ navigation }) {
             secureTextEntry
             placeholder="Sua senha"
           />
+          {errorMessage ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontFamily, lineHeight: 22 }}>{errorMessage}</Text> : null}
+          {loading ? <Text style={{ color: colors.textMuted, fontFamily, fontSize: 13, lineHeight: 20 }}>Conectando com segurança. O primeiro acesso pode levar até um minuto.</Text> : null}
           <Button title="Entrar" icon="login" onPress={handleLogin} loading={loading} />
           <Button
             title="Entrar com Google"
@@ -79,8 +71,7 @@ export default function LoginScreen({ navigation }) {
           <MaterialCommunityIcons name="account-plus-outline" size={20} color={colors.primary} />
           <Text style={styles.link}>Ainda nao tem conta? Cadastre-se</Text>
         </Pressable>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AuthLayout>
   );
 }
 
@@ -101,8 +92,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 26,
-    fontWeight: "900",
+    fontFamily, fontSize: 26,
+    fontWeight: "700",
     letterSpacing: 0
   },
   form: {
@@ -116,7 +107,7 @@ const styles = StyleSheet.create({
   },
   link: {
     color: colors.primary,
-    fontWeight: "900",
-    fontSize: 15
+    fontWeight: "700",
+    fontFamily, fontSize: 15
   },
 });

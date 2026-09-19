@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, radius } from "../constants/theme";
+import { fontFamily, colors, radius } from "../constants/theme";
 
 export const medicalNoticeText =
   "Esta análise não substitui uma consulta médica. Em caso de urgência, procure atendimento imediatamente.";
@@ -33,12 +33,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.primary,
-    fontSize: 18,
+    fontFamily, fontSize: 18,
     fontWeight: "900"
   },
   text: {
     color: colors.text,
-    fontSize: 15,
+    fontFamily, fontSize: 15,
     lineHeight: 22,
     fontWeight: "600"
   }

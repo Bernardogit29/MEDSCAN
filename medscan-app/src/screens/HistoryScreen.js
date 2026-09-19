@@ -1,367 +1,153 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
-import Header from "../components/Header";
+import Button from "../components/Button";
+import Input from "../components/Input";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { colors, radius, shadows } from "../constants/theme";
-import { mockHistory } from "../utils/mockData";
-import {
-  DEFAULT_MONITORED_PERSON_ID,
-  MONITORED_PERSON_STORAGE_KEY,
-  getMonitoredPeople,
-  findMonitoredPerson,
-} from "../utils/monitoredPeople";
-import { getStoredItem, setStoredItem } from "../utils/storage";
+import { colors, fontFamily } from "../constants/theme";
+import { getMonitoredPeople, MONITORED_PERSON_STORAGE_KEY } from "../utils/monitoredPeople";
+import { setStoredItem } from "../utils/storage";
 
-const fallbackHistoryByPerson = {
-  maria: mockHistory.map((item) => ({
-    ...item,
-    monitoredPersonId: "maria",
-    monitoredPersonName: "Maria Silva"
-  })),
-  joao: [
-    {
-      _id: "mock-joao-1",
-      type: "symptoms",
-      symptoms: "Pressao um pouco elevada e cansaco.",
-      possibleCondition: "Acompanhamento de pressao arterial",
-      riskLevel: "Moderado",
-      confidence: 70,
-      result: { details: "Registro demonstrativo do historico de Joao Silva." },
-      monitoredPersonId: "joao",
-      monitoredPersonName: "Joao Silva",
-      createdAt: new Date(Date.now() - 172800000).toISOString()
-    }
-  ],
-  me: [
-    {
-      _id: "mock-me-1",
-      type: "symptoms",
-      symptoms: "Dor de cabeca leve apos treino.",
-      possibleCondition: "Cefaleia leve",
-      riskLevel: "Baixo",
-      confidence: 74,
-      result: { details: "Registro demonstrativo do seu historico." },
-      monitoredPersonId: "me",
-      monitoredPersonName: "Voce",
-      createdAt: new Date(Date.now() - 86400000).toISOString()
-    }
-  ]
-};
-
-function formatDate(value) {
-  return new Date(value).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  });
+function dateTime(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Horário não informado";
 }
-
-function typeLabel(type) {
-  const map = {
-    exam: "Exame",
-    image: "Imagem",
-    symptoms: "Sintomas"
-  };
-
-  return map[type] || "Análise";
-}
-
-function riskColor(risk) {
-  if (risk === "Alto") return colors.danger;
-  if (risk === "Baixo") return colors.success;
-  return colors.warning;
+function Row({ icon, title, subtitle, onPress, expanded }) {
+  return <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded }} onPress={onPress} style={styles.row}>
+    <View style={styles.icon}><MaterialCommunityIcons name={icon} size={23} color={colors.primary} /></View>
+    <View style={styles.copy}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.muted}>{subtitle}</Text></View>
+    <MaterialCommunityIcons name={expanded ? "chevron-up" : "chevron-right"} size={22} color={colors.textMuted} />
+  </TouchableOpacity>;
 }
 
 export default function HistoryScreen({ navigation }) {
-  const { user } = useAuth();
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, token } = useAuth();
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
-  const [selectedPersonId, setSelectedPersonId] = useState(DEFAULT_MONITORED_PERSON_ID);
-  const selectedPerson = findMonitoredPerson(selectedPersonId, people);
+  const [personId, setPersonId] = useState("self");
+  const [history, setHistory] = useState([]);
+  const [monitoring, setMonitoring] = useState({ records: [], events: [] });
+  const [loading, setLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [monitoringError, setMonitoringError] = useState("");
+  const [expanded, setExpanded] = useState("events");
+  const [revision, setRevision] = useState(0);
+  const [modal, setModal] = useState(false);
+  const [heartRate, setHeartRate] = useState("");
+  const [glucose, setGlucose] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const selectedPerson = people.find(person => person.id === personId);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function restoreSelectedPerson() {
-      const storedPersonId = await getStoredItem(MONITORED_PERSON_STORAGE_KEY);
-
-      if (mounted && storedPersonId) {
-        setSelectedPersonId(storedPersonId);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setHistory([]); setMonitoring({ records: [], events: [] }); setHistoryError(""); setMonitoringError("");
+    if (!user || !token) { setLoading(false); return; }
+    setLoading(true);
+    async function load() {
+      const results = await Promise.allSettled([api.get("/profile"), api.get(`/history?personId=${encodeURIComponent(personId)}`), api.get(`/monitoring/history?personId=${encodeURIComponent(personId)}`)]);
+      if (!active) return;
+      const [profile, analyses, measurements] = results;
+      if (profile.status === "fulfilled") {
+        const loaded = getMonitoredPeople(profile.value.data.user || user, profile.value.data.profile?.relatives || []);
+        setPeople(loaded);
+        if (!loaded.some(person => person.id === personId)) { setPersonId("self"); return; }
       }
+      if (analyses.status === "fulfilled") setHistory(Array.isArray(analyses.value.data) ? analyses.value.data : []);
+      else setHistoryError("Não foi possível carregar as análises. Tente atualizar.");
+      if (measurements.status === "fulfilled" && Array.isArray(measurements.value.data.records) && Array.isArray(measurements.value.data.events)) setMonitoring(measurements.value.data);
+      else setMonitoringError("Os registros de monitoramento estão indisponíveis neste momento.");
+      setLoading(false);
     }
+    load(); return () => { active = false; };
+  }, [user, token, personId, revision]));
 
-    restoreSelectedPerson();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      let mounted = true;
-
-      async function loadHistory() {
-        setLoading(true);
-        try {
-          const [profileResponse, historyResponse] = await Promise.all([
-            api.get("/profile"),
-            api.get(`/history?personId=${selectedPersonId}`)
-          ]);
-          const profile = profileResponse.data.profile || {};
-          const loadedPeople = getMonitoredPeople(profileResponse.data.user || user, profile.relatives || []);
-          if (mounted) {
-            setPeople(loadedPeople);
-            if (!loadedPeople.some((person) => person.id === selectedPersonId)) {
-              setSelectedPersonId(DEFAULT_MONITORED_PERSON_ID);
-              await setStoredItem(MONITORED_PERSON_STORAGE_KEY, DEFAULT_MONITORED_PERSON_ID);
-            }
-          }
-          const { data } = historyResponse;
-          if (mounted) setHistory(data);
-        } catch (error) {
-          if (mounted) setHistory(fallbackHistoryByPerson[selectedPersonId] || []);
-        } finally {
-          if (mounted) setLoading(false);
-        }
-      }
-
-      loadHistory();
-
-      return () => {
-        mounted = false;
-      };
-    }, [selectedPersonId, user])
-  );
-
-  async function selectPerson(personId) {
-    setSelectedPersonId(personId);
-    await setStoredItem(MONITORED_PERSON_STORAGE_KEY, personId);
+  async function selectPerson(id) { setHistory([]); setMonitoring({ records: [], events: [] }); setPersonId(id); await setStoredItem(MONITORED_PERSON_STORAGE_KEY, id); }
+  function toggle(id) { setExpanded(current => current === id ? "" : id); }
+  async function saveMeasurement() {
+    if (saving || loading || monitoringError) return;
+    const values = {};
+    for (const [key, raw] of [["heartRate",heartRate],["glucose",glucose]]) {
+      if (!raw.trim()) continue;
+      const value = Number(raw.replace(",", "."));
+      if (!Number.isFinite(value) || value <= 0) { setSaveError("Informe valores numéricos positivos."); return; }
+      values[key] = value;
+    }
+    if (!Object.keys(values).length) { setSaveError("Preencha pelo menos uma medição."); return; }
+    setSaving(true); setSaveError("");
+    try {
+      await api.post("/monitoring", { ...values, monitoredPersonId: personId, measuredAt: new Date().toISOString(), note });
+      setModal(false); setHeartRate(""); setGlucose(""); setNote(""); setRevision(value => value + 1); setExpanded("records");
+    } catch (_error) { setSaveError("Não foi possível salvar a medição. Tente novamente."); }
+    finally { setSaving(false); }
   }
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Historico" subtitle={`Analises de ${selectedPerson.name}`} />
-
-        <View style={styles.personTabs}>
-          {people.map((person) => {
-            const isActive = person.id === selectedPersonId;
-
-            return (
-              <TouchableOpacity
-                key={person.id}
-                style={[styles.personTab, isActive && styles.personTabActive]}
-                activeOpacity={0.84}
-                onPress={() => selectPerson(person.id)}
-              >
-                <MaterialCommunityIcons
-                  name={person.icon}
-                  size={18}
-                  color={isActive ? colors.white : colors.primary}
-                />
-                <Text style={[styles.personTabText, isActive && styles.personTabTextActive]}>
-                  {person.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando histórico...</Text>
-          </View>
-        ) : (
-          <View style={styles.list}>
-            {!history.length ? (
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="file-search-outline" size={34} color={colors.primary} />
-                <Text style={styles.emptyTitle}>Nenhuma analise para {selectedPerson.name}</Text>
-                <Text style={styles.emptyText}>
-                  As proximas analises feitas para esta pessoa aparecerao aqui.
-                </Text>
-              </View>
-            ) : null}
-            {history.map((item) => (
-              <TouchableOpacity
-                key={item._id}
-                onPress={() => navigation.navigate("Result", { analysis: item })}
-                activeOpacity={0.85}
-                style={styles.item}
-              >
-                <View style={styles.iconBox}>
-                  <MaterialCommunityIcons
-                    name={item.type === "symptoms" ? "message-text-outline" : "file-search-outline"}
-                    size={28}
-                    color={colors.primary}
-                  />
-                </View>
-                <View style={styles.copy}>
-                  <View style={styles.itemHeader}>
-                    <Text style={styles.type}>{typeLabel(item.type)}</Text>
-                    <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
-                  </View>
-                  <Text style={styles.summary} numberOfLines={2}>
-                    {item.possibleCondition || item.result?.details || "Pré-análise orientativa registrada."}
-                  </Text>
-                  <View style={styles.riskLine}>
-                    <View style={[styles.dot, { backgroundColor: riskColor(item.riskLevel) }]} />
-                    <Text style={[styles.risk, { color: riskColor(item.riskLevel) }]}>
-                      Risco {item.riskLevel || "Moderado"}
-                    </Text>
-                  </View>
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={28} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-      <BottomTab navigation={navigation} active="History" />
-    </SafeAreaView>
-  );
+  function analysisList(type) {
+    const items = history.filter(item => type === "symptoms" ? item.type === "symptoms" : item.type !== "symptoms");
+    return <View style={styles.expanded}>
+      {historyError ? <Text style={styles.muted}>{historyError}</Text> : !items.length ? <Text style={styles.muted}>Nenhum registro nesta categoria.</Text> : items.map(item => <TouchableOpacity accessibilityRole="button" key={item._id} style={styles.entry} onPress={() => navigation.navigate("Result", { analysis: item })}><Text style={styles.rowTitle}>{item.possibleCondition || "Análise registrada"}</Text><Text style={styles.muted}>{dateTime(item.createdAt)}</Text></TouchableOpacity>)}
+    </View>;
+  }
+  return <SafeAreaView style={styles.safe}>
+    <ScrollView contentContainerStyle={styles.content}>
+      <View style={styles.heading}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")}><MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>Prontuário</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar prontuário" onPress={() => setRevision(value => value + 1)}><MaterialCommunityIcons name="refresh" size={23} color={colors.primary} /></TouchableOpacity></View>
+      <View style={styles.people}>
+        {people.map(person => <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: person.id === personId }} key={person.id} onPress={() => selectPerson(person.id)} style={[styles.person, person.id === personId && styles.personActive]}><MaterialCommunityIcons name="account-circle-outline" size={24} color={person.id === personId ? colors.white : colors.primary} /><View><Text style={[styles.personName, person.id === personId && styles.white]}>{person.id === "self" ? "Você" : person.name}</Text><Text style={[styles.personMeta, person.id === personId && styles.white]}>{person.id === "self" ? "Titular" : "Familiar"}</Text></View></TouchableOpacity>)}
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Profile", { openFamilyForm: true })} style={[styles.person, styles.add]}><MaterialCommunityIcons name="plus" size={19} color={colors.primary} /><Text style={styles.personName}>Adicionar</Text></TouchableOpacity>
+      </View>
+      {!token ? <View style={styles.group}><Text style={styles.notice}>Entre na sua conta para consultar seu prontuário.</Text><Button title="Entrar" onPress={() => navigation.navigate("Login", { returnToPrevious: true })} /></View> : null}
+      {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      <Text style={styles.section}>HISTÓRICO DE SAÚDE</Text>
+      <View style={styles.group}>
+        <Row icon="account-heart-outline" title="Informações pessoais" subtitle="Pessoa acompanhada e dados do perfil" expanded={expanded === "personal"} onPress={() => toggle("personal")} />
+        {expanded === "personal" ? <View style={styles.expanded}><Text style={styles.rowTitle}>{selectedPerson?.name || "Você"}</Text><Text style={styles.muted}>{selectedPerson?.age != null ? `${selectedPerson.age} anos` : "Idade não informada"}</Text><Text style={styles.muted}>{selectedPerson?.relation || "Titular"}</Text></View> : null}
+        <Row icon="message-text-outline" title="Sintomas e orientações" subtitle="Seus relatos e análises anteriores" expanded={expanded === "symptoms"} onPress={() => toggle("symptoms")} />
+        {expanded === "symptoms" ? analysisList("symptoms") : null}
+        <Row icon="file-document-outline" title="Exames e imagens" subtitle="Documentos e resultados organizados" expanded={expanded === "exams"} onPress={() => toggle("exams")} />
+        {expanded === "exams" ? analysisList("exams") : null}
+      </View>
+      <Text style={styles.section}>MONITORAMENTO</Text>
+      <View style={styles.group}>
+        <Row icon="chart-timeline-variant" title="Variações registradas" subtitle="O que mudou e em qual horário" expanded={expanded === "events"} onPress={() => toggle("events")} />
+        {expanded === "events" ? <View style={styles.expanded}>
+          <Text style={styles.muted}>Comparação entre medições registradas. Uma variação não confirma uma alteração clínica.</Text>
+          {monitoringError ? <Text style={styles.notice}>{monitoringError}</Text> : !monitoring.events.length ? <Text style={styles.notice}>{loading ? "Carregando registros…" : "Ainda não há variações para comparar. São necessárias duas medições diferentes do mesmo indicador."}</Text> : monitoring.events.map(event => <View key={event.id} style={styles.event}><View style={styles.eventTitle}><MaterialCommunityIcons name={event.change > 0 ? "trending-up" : "trending-down"} size={20} color={colors.primary} /><Text style={styles.rowTitle}>{event.label}</Text></View><Text style={styles.values}>{event.previousValue} → {event.value} <Text style={styles.unit}>{event.unit}</Text></Text><Text style={styles.muted}>De {dateTime(event.previousAt)}</Text><Text style={styles.muted}>Para {dateTime(event.measuredAt)}</Text><Text style={styles.muted}>{event.change > 0 ? "Aumento" : "Redução"} de {Math.abs(event.change)} {event.unit} · intervalo de {event.intervalMinutes} min</Text>{event.note ? <Text style={styles.note}>{event.note}</Text> : null}</View>)}
+        </View> : null}
+        <Row icon="clipboard-pulse-outline" title="Relatório de medições" subtitle="Valores, datas e observações" expanded={expanded === "records"} onPress={() => toggle("records")} />
+        {expanded === "records" ? <View style={styles.expanded}>{monitoringError ? <Text style={styles.notice}>{monitoringError}</Text> : !monitoring.records.length ? <Text style={styles.muted}>Nenhuma medição registrada.</Text> : monitoring.records.map(record => <View key={record._id} style={styles.entry}><Text style={styles.rowTitle}>{dateTime(record.measuredAt)}</Text>{record.heartRate != null ? <Text style={styles.note}>Frequência cardíaca: {record.heartRate} bpm</Text> : null}{record.glucose != null ? <Text style={styles.note}>Glicose: {record.glucose} mg/dL</Text> : null}{record.note ? <Text style={styles.muted}>{record.note}</Text> : null}</View>)}<Text style={styles.muted}>Até 100 medições recentes · horários locais do aparelho.</Text></View> : null}
+      </View>
+      {token ? <Button title="Registrar medição" icon="plus" variant="outline" disabled={loading || Boolean(monitoringError)} onPress={() => { setSaveError(""); setModal(true); }} /> : null}
+    </ScrollView>
+    <BottomTab navigation={navigation} active="History" />
+    <Modal visible={modal} animationType="slide" onRequestClose={() => !saving && setModal(false)}><SafeAreaView style={styles.safe}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}><Text style={styles.title}>Registrar medição</Text><Text style={styles.muted}>{selectedPerson?.name} · o registro usará a data e o horário do envio.</Text><Input label="Frequência cardíaca (bpm)" value={heartRate} onChangeText={setHeartRate} keyboardType="decimal-pad" placeholder="Valor medido" /><Input label="Glicose (mg/dL)" value={glucose} onChangeText={setGlucose} keyboardType="decimal-pad" placeholder="Valor medido" /><Input label="Observação (opcional)" value={note} onChangeText={setNote} multiline placeholder="Ex.: após caminhar, em repouso ou após refeição" />{saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}<Button title="Salvar medição" loading={saving} onPress={saveMeasurement} /><Button title="Cancelar" variant="outline" disabled={saving} onPress={() => setModal(false)} /></ScrollView></SafeAreaView></Modal>
+  </SafeAreaView>;
 }
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  content: {
-    padding: 22,
-    paddingBottom: 130,
-    gap: 16
-  },
-  loading: {
-    minHeight: 180,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12
-  },
-  loadingText: {
-    color: colors.textMuted,
-    fontWeight: "700"
-  },
-  list: {
-    gap: 14
-  },
-  personTabs: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10
-  },
-  personTab: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    backgroundColor: colors.white
-  },
-  personTabActive: {
-    backgroundColor: colors.primary
-  },
-  personTabText: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  personTabTextActive: {
-    color: colors.white
-  },
-  emptyState: {
-    minHeight: 180,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 22,
-    gap: 8,
-    ...shadows.card
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "900",
-    textAlign: "center"
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
-    textAlign: "center"
-  },
-  item: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card
-  },
-  iconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  copy: {
-    flex: 1,
-    gap: 6,
-    minWidth: 0
-  },
-  itemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8
-  },
-  type: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "900"
-  },
-  date: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  summary: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600"
-  },
-  riskLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7
-  },
-  dot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5
-  },
-  risk: {
-    fontSize: 13,
-    fontWeight: "900"
-  }
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 20, paddingBottom: 120, gap: 16 },
+  heading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  title: { fontFamily, fontSize: 24, fontWeight: "700", color: colors.primary },
+  people: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 10 },
+  person: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 28, paddingVertical: 11, paddingHorizontal: 15, backgroundColor: colors.white },
+  personActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  personName: { fontFamily, fontSize: 14, fontWeight: "600", color: colors.primary },
+  personMeta: { fontFamily, fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  white: { color: colors.white }, add: { borderStyle: "dashed", borderColor: colors.primary },
+  section: { fontFamily, fontSize: 11, letterSpacing: 1.4, color: colors.textMuted, marginTop: 9 },
+  group: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22, overflow: "hidden" },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, minHeight: 78 },
+  icon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  copy: { flex: 1 }, rowTitle: { fontFamily, fontSize: 15, fontWeight: "600", color: colors.text },
+  muted: { fontFamily, fontSize: 12, lineHeight: 19, color: colors.textMuted, marginTop: 3 },
+  expanded: { padding: 16, paddingTop: 0, gap: 10 },
+  entry: { borderTopWidth: 1, borderColor: colors.border, paddingVertical: 12, gap: 4 },
+  notice: { fontFamily, fontSize: 13, lineHeight: 21, color: colors.textMuted, paddingVertical: 10 },
+  event: { backgroundColor: colors.background, padding: 15, borderRadius: 16, gap: 4 },
+  eventTitle: { flexDirection: "row", gap: 8, alignItems: "center" },
+  values: { fontFamily, fontSize: 24, fontWeight: "700", color: colors.primary, marginVertical: 4 },
+  unit: { fontSize: 12, fontWeight: "400" }, note: { fontFamily, fontSize: 13, lineHeight: 21, color: colors.text },
+  error: { fontFamily, color: colors.danger, lineHeight: 21 }
 });

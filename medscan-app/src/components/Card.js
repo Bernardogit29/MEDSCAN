@@ -15,6 +15,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadows.card
   },
   bordered: {
