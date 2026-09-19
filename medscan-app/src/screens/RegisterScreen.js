@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import AuthLayout from "../components/AuthLayout";
+import { validateRegistration } from "../utils/authValidation";
 import { useAuth } from "../context/AuthContext";
 import { fontFamily, colors } from "../constants/theme";
 
@@ -18,25 +19,14 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   async function handleRegister() {
-    if (!name || !age || !email || !password || !confirmPassword) {
-      Alert.alert("Campos obrigatorios", "Preencha todos os campos para criar sua conta.");
-      return;
-    }
-
+    if (loading) return;
+    const validation = validateRegistration({ name, age, email, password, confirmPassword });
+    if (validation) { setErrorMessage(validation); return; }
     const numericAge = Number(age);
-    if (!Number.isInteger(numericAge) || numericAge < 0 || numericAge > 120) {
-      Alert.alert("Idade invalida", "Informe uma idade entre 0 e 120 anos.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Senhas diferentes", "A confirmacao precisa ser igual a senha.");
-      return;
-    }
 
     setErrorMessage("");
     try {
-      await register(name.trim(), email.trim(), numericAge, password);
+      await register(name.trim(), email.trim().toLowerCase(), numericAge, password);
       navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (error) {
       setErrorMessage(error.message || "Não foi possível conectar. Tente novamente.");
@@ -69,7 +59,7 @@ export default function RegisterScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="Crie uma senha"
+              placeholder="Pelo menos 8 caracteres"
             />
             <Input
               label="Confirmar senha"

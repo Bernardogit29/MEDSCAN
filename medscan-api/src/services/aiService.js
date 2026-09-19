@@ -1,5 +1,6 @@
 const fs = require("fs/promises");
 const axios = require("axios");
+const { withProviderRetry } = require("./providerRetry");
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_MODEL = "gemini-3.6-flash";
@@ -74,7 +75,7 @@ async function buildImagePart(image) {
   return { inlineData: { mimeType: image.mimetype, data: await fs.readFile(image.path, "base64") } };
 }
 
-async function requestGemini({ model, apiKey, parts }) {
+async function requestGemini({ model, apiKey, parts, timeout }) {
   const response = await axios.post(
     `${GEMINI_BASE_URL}/models/${encodeURIComponent(model)}:generateContent`,
     {
@@ -87,7 +88,7 @@ async function requestGemini({ model, apiKey, parts }) {
         maxOutputTokens: 8192
       }
     },
-    { headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, timeout: 60000 }
+    { headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, timeout }
   );
   const candidate = response.data?.candidates?.[0];
   if (candidate?.finishReason && candidate.finishReason !== "STOP") {
@@ -114,13 +115,13 @@ async function analyzeMedicalData({ symptoms = "", image }) {
   const parts = [{ text: JSON.stringify({ relato: symptoms.trim() || "Imagem enviada sem descrição.", imagemAnexada: Boolean(imagePart) }) }];
   if (imagePart) parts.push(imagePart);
   try {
-    const data = await requestGemini({ model, apiKey, parts });
+    const data = await withProviderRetry(timeout => requestGemini({ model, apiKey, parts, timeout }));
     return { ...data, confidence: null, source: "gemini", model, promptVersion: "medscan-v2", imageReceived: Boolean(imagePart) };
   } catch (error) {
     const status = error.response?.status;
     // Do not log the Axios request, API key, image or health data.
     console.warn("Falha na análise Gemini", { status: status || error.code || "invalid-response", model });
-    if (status === 503 || status === 500) throw providerError("O provedor de IA está temporariamente indisponível. Tente novamente em alguns instantes.", 503);
+    if ([500, 502, 503, 504].includes(status)) throw providerError("A IA continua temporariamente indisponível após novas tentativas. Seu relato foi mantido; tente novamente em alguns instantes.", 503);
     if (status === 429) throw providerError("O serviço de IA atingiu o limite de uso. Aguarde e tente novamente.", 503);
     if (status === 401 || status === 403 || status === 404) throw providerError("O serviço de IA precisa de um ajuste de configuração. Tente novamente mais tarde.", 503);
     throw providerError("Não foi possível obter uma análise completa. Tente novamente em instantes.");

@@ -1,421 +1,139 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, Text, View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
 import Button from "../components/Button";
-import Card from "../components/Card";
-import BrandHero from "../components/BrandHero";
+import Input from "../components/Input";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, colors, radius } from "../constants/theme";
+import { colors, fontFamily } from "../constants/theme";
 
-const settings = [
-  { label: "Privacidade e Segurança", icon: "shield-lock-outline" },
-  { label: "Notificações", icon: "bell-outline" },
-  { label: "Preferências do App", icon: "tune-variant" },
-  { label: "Ajuda e Suporte", icon: "help-circle-outline" }
+const options = [
+  ["privacy", "shield-lock-outline", "Privacidade", "Controle as prévias do prontuário"],
+  ["notifications", "bell-outline", "Notificações", "Escolha o que aparece na central"],
+  ["preferences", "tune-variant", "Preferências", "Seu prontuário, do seu jeito"],
+  ["help", "help-circle-outline", "Ajuda", "Respostas para o dia a dia"]
 ];
-
-export default function ProfileScreen({ navigation, route }) {
-  const { user, logout } = useAuth();
-  const [profileData, setProfileData] = useState({
-    user,
-    profile: {
-      verified: true,
-      relatives: []
-    }
-  });
-  const [familyModalVisible, setFamilyModalVisible] = useState(false);
-  const [familyName, setFamilyName] = useState("");
-  const [familyAge, setFamilyAge] = useState("");
-  const [savingFamily, setSavingFamily] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadProfile() {
-      try {
-        const { data } = await api.get("/profile");
-        if (mounted) setProfileData(data);
-      } catch (error) {
-        if (mounted) {
-          setProfileData({
-            user: user || { name: "Usuário MEDSCAN", email: "usuario@medscan.com" },
-            profile: { verified: true, relatives: [] }
-          });
-        }
-      }
-    }
-
-    loadProfile();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (route.params?.openFamilyForm) {
-      setFamilyModalVisible(true);
-      navigation.setParams({ openFamilyForm: false });
-    }
-  }, [navigation, route.params?.openFamilyForm]);
-
-  async function addFamilyMember() {
-    const name = familyName.trim();
-    const age = Number(familyAge);
-
-    if (!name) {
-      Alert.alert("Dados incompletos", "Informe o nome do familiar.");
-      return;
-    }
-
-    if (familyAge && (!Number.isInteger(age) || age < 0 || age > 120)) {
-      Alert.alert("Idade inválida", "Informe uma idade entre 0 e 120 anos.");
-      return;
-    }
-
-    const relative = {
-      id: `relative-${Date.now()}`,
-      name,
-      age: familyAge ? age : null,
-      relation: "Familiar monitorado",
-      status: "Estavel",
-      icon: "account-heart",
-      vitals: {
-        heartRate: 82,
-        glucose: 98,
-        bloodPressure: "120/80",
-        sleep: "7h 30m"
-      }
-    };
-
-    setSavingFamily(true);
-    try {
-      const relatives = [...(profileData.profile?.relatives || []), relative];
-      const { data } = await api.put("/profile", { relatives });
-      setProfileData(data);
-      setFamilyName("");
-      setFamilyAge("");
-      setFamilyModalVisible(false);
-      Alert.alert("Familiar adicionado", `${name} agora aparece no monitoramento.`);
-    } catch (error) {
-      Alert.alert("Não foi possível salvar", "Verifique a conexão com a API e tente novamente.");
-    } finally {
-      setSavingFamily(false);
-    }
-  }
-
-  function handleLogout() {
-    Alert.alert("Sair da conta", "Deseja encerrar sua sessão?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Sair",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          navigation.reset({ index: 0, routes: [{ name: "Welcome" }] });
-        }
-      }
-    ]);
-  }
-
-  const currentUser = profileData.user || user || {};
-  const profile = profileData.profile || {};
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <BrandHero
-          title="Perfil"
-          subtitle="Gerencie seus dados e preferências"
-          onNotifications={() => navigation.navigate("Notifications")}
-        />
-        <View style={styles.body}>
-
-        <Card style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons name="account" size={54} color={colors.primary} />
-          </View>
-          <View style={styles.profileCopy}>
-            <Text style={styles.name}>{currentUser.name || "Usuário MEDSCAN"}</Text>
-            <Text style={styles.email}>{currentUser.email || "usuario@medscan.com"}</Text>
-            {currentUser.age !== undefined && currentUser.age !== null ? (
-              <Text style={styles.age}>{currentUser.age} anos</Text>
-            ) : null}
-            <View style={styles.verifiedBadge}>
-              <MaterialCommunityIcons name="check-decagram" size={18} color={colors.success} />
-              <Text style={styles.verifiedText}>
-                {profile.verified ? "Conta verificada" : "Conta não verificada"}
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        <Card style={styles.deviceSummary}>
-          <View style={styles.summaryIcon}>
-            <MaterialCommunityIcons name="devices" size={30} color={colors.primary} />
-          </View>
-          <View style={styles.summaryCopy}>
-            <Text style={styles.summaryTitle}>Dispositivos de saúde conectados</Text>
-            <Text style={styles.summaryText}>4 aparelhos ativos para monitoramento preventivo.</Text>
-          </View>
-        </Card>
-
-        <View style={styles.buttonGroup}>
-          <Button
-            title="Adicionar dispositivo"
-            icon="plus-circle-outline"
-            variant="outline"
-            onPress={() => Alert.alert("Dispositivo", "Fluxo de conexão preparado para a próxima etapa.")}
-          />
-          <Button
-            title="Adicionar familiar para monitoramento"
-            icon="account-heart-outline"
-            variant="soft"
-            onPress={() => setFamilyModalVisible(true)}
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Configurações</Text>
-        <View style={styles.settingsList}>
-          {settings.map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              style={styles.settingRow}
-              activeOpacity={0.84}
-              onPress={item.label === "Notificações" ? () => navigation.navigate("Notifications") : undefined}
-            >
-              <View style={styles.settingIcon}>
-                <MaterialCommunityIcons name={item.icon} size={24} color={colors.primary} />
-              </View>
-              <Text style={styles.settingLabel}>{item.label}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={25} color={colors.textMuted} />
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.logoutRow} activeOpacity={0.84} onPress={handleLogout}>
-            <View style={styles.logoutIcon}>
-              <MaterialCommunityIcons name="logout" size={24} color={colors.danger} />
-            </View>
-            <Text style={styles.logoutText}>Sair da conta</Text>
-          </TouchableOpacity>
-        </View>
-        </View>
-      </ScrollView>
-      <Modal visible={familyModalVisible} transparent animationType="slide" onRequestClose={() => setFamilyModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Adicionar familiar</Text>
-            <Text style={styles.modalSubtitle}>Cadastre uma pessoa para acompanhar no monitoramento.</Text>
-            <TextInput
-              value={familyName}
-              onChangeText={setFamilyName}
-              placeholder="Nome completo"
-              placeholderTextColor={colors.textMuted}
-              style={styles.modalInput}
-            />
-            <TextInput
-              value={familyAge}
-              onChangeText={setFamilyAge}
-              placeholder="Idade (opcional)"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <View style={styles.modalActions}>
-              <Button title="Cancelar" variant="outline" onPress={() => setFamilyModalVisible(false)} />
-              <Button title="Salvar familiar" onPress={addFamilyMember} loading={savingFamily} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-      <BottomTab navigation={navigation} active="Profile" />
-    </SafeAreaView>
-  );
+const titles = { edit: "Seus dados", family: "Adicionar familiar", privacy: "Privacidade", notifications: "Notificações", preferences: "Preferências", help: "Como podemos ajudar?", logout: "Sair da conta?" };
+const faqs = [
+  ["Onde encontro uma análise anterior?", "Abra Prontuário e toque em Sintomas e orientações ou Exames e imagens. Selecione um registro para ver a orientação completa."],
+  ["Como acompanho um familiar?", "Adicione o nome e a idade no perfil. Depois selecione essa pessoa no prontuário ou no monitoramento para consultar os registros dela."],
+  ["Por que uma medição aparece vazia?", "Um traço indica que não há uma medição disponível. No prontuário, use Registrar medição quando o serviço estiver disponível."],
+  ["Não consigo acessar meus dados", "Confira sua conexão e tente carregar a página novamente. Se a sessão expirou, entre na conta de novo. Seus registros salvos ficam associados à sua conta."]
+];
+function SettingSwitch({ title, description, value, onValueChange }) {
+  return <View style={s.switchRow}><View style={s.copy}><Text style={s.rowTitle}>{title}</Text><Text style={s.muted}>{description}</Text></View><Switch accessibilityLabel={title} value={value} onValueChange={onValueChange} trackColor={{ false: "#CBD9D4", true: colors.primary }} thumbColor="#FFFFFF" /></View>;
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 130 },
-  body: { padding: 20, gap: 17 },
-  profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16
-  },
-  avatar: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  profileCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  name: {
-    color: colors.text,
-    fontFamily, fontSize: 21,
-    fontWeight: "700"
-  },
-  email: {
-    color: colors.textMuted,
-    fontFamily, fontSize: 15,
-    fontWeight: "700",
-    marginTop: 4
-  },
-  age: {
-    color: colors.textMuted,
-    fontFamily, fontSize: 14,
-    fontWeight: "700",
-    marginTop: 3
-  },
-  verifiedBadge: {
-    marginTop: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    alignSelf: "flex-start",
-    backgroundColor: "#DCFCE7",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7
-  },
-  verifiedText: {
-    color: "#11762D",
-    fontWeight: "700",
-    fontFamily, fontSize: 13
-  },
-  deviceSummary: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14
-  },
-  summaryIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  summaryCopy: {
-    flex: 1
-  },
-  summaryTitle: {
-    color: colors.text,
-    fontFamily, fontSize: 17,
-    fontWeight: "700"
-  },
-  summaryText: {
-    color: colors.textMuted,
-    fontFamily, fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
-    marginTop: 4
-  },
-  buttonGroup: {
-    gap: 12
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily, fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: 0,
-    marginTop: 4
-  },
-  settingsList: {
-    gap: 12
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(15, 23, 42, 0.45)"
-  },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 22,
-    gap: 14
-  },
-  modalTitle: {
-    color: colors.text,
-    fontFamily, fontSize: 21,
-    fontWeight: "700"
-  },
-  modalSubtitle: {
-    color: colors.textMuted,
-    fontFamily, fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 20
-  },
-  modalInput: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    color: colors.text,
-    fontFamily, fontSize: 16
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 10
-  },
-  settingRow: {
-    minHeight: 64,
-    borderRadius: radius.lg,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 13
-  },
-  settingIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  settingLabel: {
-    flex: 1,
-    color: colors.text,
-    fontFamily, fontSize: 16,
-    fontWeight: "800"
-  },
-  logoutRow: {
-    minHeight: 64,
-    borderRadius: radius.lg,
-    backgroundColor: "#FFF1F2",
-    borderWidth: 1,
-    borderColor: "#FFE4E6",
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 13
-  },
-  logoutIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: "#FEE2E2",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  logoutText: {
-    color: colors.danger,
-    fontFamily, fontSize: 16,
-    fontWeight: "700"
+export default function ProfileScreen({ navigation, route }) {
+  const { user, token, logout, refreshMe } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [modal, setModal] = useState("");
+  const [draft, setDraft] = useState({});
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [faq, setFaq] = useState(-1);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setData(null); setError("");
+    if (!token) return;
+    setLoading(true);
+    api.get("/profile").then(response => { if (active) setData(response.data); }).catch(() => { if (active) setError("Não foi possível carregar seu perfil."); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, revision]));
+  useEffect(() => {
+    if (route.params?.openFamilyForm && data) { open("family"); navigation.setParams({ openFamilyForm: false }); }
+  }, [route.params?.openFamilyForm, data]);
+  const person = data?.user || user || {};
+  const relatives = data?.profile?.relatives || [];
+  function open(key) {
+    setSaveError(""); setNotice(""); setDraft(data?.profile?.settings || {});
+    setName(key === "edit" ? person.name || "" : ""); setAge(key === "edit" && person.age != null ? String(person.age) : ""); setModal(key);
   }
+  function preference(key, value) { setDraft(current => ({ ...current, appPreferences: { ...current.appPreferences, [key]: value } })); }
+  async function save() {
+    if (saving) return;
+    let payload;
+    if (modal === "edit" || modal === "family") {
+      if (!name.trim()) { setSaveError("Informe o nome."); return; }
+      if (age.trim() && (!Number.isInteger(Number(age)) || Number(age) < 0 || Number(age) > 120)) { setSaveError("Informe uma idade entre 0 e 120 anos."); return; }
+      payload = modal === "edit" ? { name: name.trim(), ...(age.trim() ? { age: Number(age) } : {}) } : { relatives: [...relatives, { id: `relative-${Date.now()}`, name: name.trim(), age: age.trim() ? Number(age) : null, relation: "Familiar monitorado", icon: "account-heart" }] };
+    } else payload = { settings: draft };
+    setSaving(true); setSaveError("");
+    try {
+      if (["privacy", "notifications", "preferences"].includes(modal)) {
+        const current = await api.get("/profile");
+        const settings = current.data.profile?.settings || {};
+        const appPreferences = { ...settings.appPreferences };
+        if (modal === "privacy") appPreferences.hideHealthPreviews = draft.appPreferences?.hideHealthPreviews === true;
+        if (modal === "preferences") {
+          appPreferences.compactHistory = draft.appPreferences?.compactHistory === true;
+          appPreferences.oldestFirst = draft.appPreferences?.oldestFirst === true;
+        }
+        payload = { settings: { ...settings, appPreferences, ...(modal === "notifications" ? { notifications: draft.notifications !== false } : {}) } };
+      }
+      const response = await api.put("/profile", payload);
+      setData(response.data);
+      if (modal === "edit") await refreshMe().catch(() => {});
+      setModal(""); setNotice("Alterações salvas na sua conta.");
+      return true;
+    } catch (_) { setSaveError("Não foi possível salvar. Suas alterações continuam aqui para tentar novamente."); }
+    finally { setSaving(false); }
+  }
+  const initials = (person.name || "Você").trim().split(/\s+/).slice(0, 2).map(word => word[0]).join("").toUpperCase();
+  const editable = ["edit", "family", "privacy", "notifications", "preferences"].includes(modal);
+  return <SafeAreaView style={s.safe}>
+    <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <View style={s.heading}><Text style={s.pageTitle}>Meu perfil</Text><View style={s.brand}><Icon name="pulse" size={16} color={colors.primary} /><Text style={s.brandText}>MEDSCAN</Text></View></View>
+      <View style={s.identity}>
+        <View style={s.identityTop}><View style={s.avatar}><Text style={s.initials}>{initials}</Text></View><View style={s.accountBadge}><Text style={s.accountText}>{token ? "SUA CONTA" : "BOAS-VINDAS"}</Text></View></View>
+        <Text style={s.name}>{person.name || "Seu espaço de cuidado"}</Text>
+        <Text style={s.email}>{person.email || "Entre para organizar seus dados de saúde"}</Text>
+        <TouchableOpacity accessibilityRole="button" disabled={Boolean(token) && !data} style={s.editButton} onPress={() => token ? open("edit") : navigation.navigate("Login", { returnToPrevious: true })}><Text style={s.editText}>{token ? "Editar meus dados" : "Entrar na conta"}</Text><Icon name="arrow-top-right" size={18} color={colors.primary} /></TouchableOpacity>
+      </View>
+      {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      {error ? <View style={s.group}><Text style={s.error}>Não foi possível carregar seu perfil.</Text><Button title="Tentar novamente" variant="soft" onPress={() => setRevision(value => value + 1)} /></View> : null}
+      {notice ? <Text accessibilityRole="alert" style={s.success}>{notice}</Text> : null}
+      <Text style={s.section}>SEU CUIDADO</Text>
+      <View style={s.shortcuts}>
+        <TouchableOpacity accessibilityRole="button" style={s.shortcut} onPress={() => navigation.navigate("Monitoring")}><View style={s.icon}><Icon name="heart-pulse" size={23} color={colors.primary} /></View><Text style={s.rowTitle}>Monitoramento</Text><Text style={s.muted}>Acompanhar medições</Text><Icon name="arrow-right" size={20} color={colors.primary} /></TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" disabled={Boolean(token) && !data} style={s.shortcut} onPress={() => token ? open("family") : navigation.navigate("Login", { returnToPrevious: true })}><View style={s.icon}><Icon name="account-group-outline" size={23} color={colors.primary} /></View><Text style={s.rowTitle}>Minha família</Text><Text style={s.muted}>{data ? `${relatives.length} ${relatives.length === 1 ? "pessoa cadastrada" : "pessoas cadastradas"}` : "Pessoas que você cuida"}</Text><Text style={s.link}>+ Adicionar</Text></TouchableOpacity>
+      </View>
+      {relatives.length ? <View style={s.familyList}>{relatives.map(relative => <View key={relative.id} style={s.familyChip}><Icon name="account-outline" size={16} color={colors.primary} /><Text style={s.muted}>{relative.name}</Text></View>)}</View> : null}
+      <Text style={s.section}>AJUSTES DA CONTA</Text>
+      <View style={s.settings}>{options.map(([key, icon, title, description], index) => <TouchableOpacity accessibilityRole="button" key={key} disabled={key !== "help" && Boolean(token) && !data} style={[s.row, index > 0 && s.separator]} onPress={() => key === "help" || token ? open(key) : navigation.navigate("Login", { returnToPrevious: true })}><View style={s.icon}><Icon name={icon} size={22} color={colors.primary} /></View><View style={s.copy}><Text style={s.rowTitle}>{title}</Text><Text style={s.muted}>{description}</Text></View><Icon name="chevron-right" size={20} color={colors.textMuted} /></TouchableOpacity>)}</View>
+      {token ? <TouchableOpacity accessibilityRole="button" style={s.logout} onPress={() => open("logout")}><Icon name="logout" size={19} color={colors.textMuted} /><Text style={s.muted}>Sair da conta</Text></TouchableOpacity> : null}
+    </ScrollView>
+    <BottomTab navigation={navigation} active="Profile" />
+    <Modal visible={Boolean(modal)} transparent animationType="slide" onRequestClose={() => !saving && setModal("")}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.backdrop}><SafeAreaView style={s.sheet}>
+        <View style={s.sheetHeader}><Text style={s.sheetTitle}>{titles[modal]}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Fechar" disabled={saving} onPress={() => setModal("")}><Icon name="close" size={24} color={colors.primary} /></TouchableOpacity></View>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.sheetBody}>
+          {modal === "edit" || modal === "family" ? <><Text style={s.muted}>{modal === "family" ? "Adicione uma pessoa para organizar o acompanhamento dela." : person.email}</Text><Input label="Nome" value={name} onChangeText={setName} placeholder="Nome completo" /><Input label="Idade (opcional)" value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="Idade em anos" /></> : null}
+          {modal === "privacy" ? <><SettingSwitch title="Ocultar prévias de saúde" description="Esconde os títulos das análises nas listas do prontuário e da central. Os detalhes continuam acessíveis ao abrir um registro." value={draft.appPreferences?.hideHealthPreviews === true} onValueChange={value => preference("hideHealthPreviews", value)} /><View style={s.tip}><Icon name="information-outline" size={22} color={colors.primary} /><Text style={[s.muted, s.copy]}>Esta opção altera a exibição das listas. Ao terminar de usar um aparelho compartilhado, saia da sua conta.</Text></View></> : null}
+          {modal === "notifications" ? <><SettingSwitch title="Atualizações na central" description="Mostra suas análises recentes na página Notificações. Esta opção não ativa notificações push no celular." value={draft.notifications !== false} onValueChange={value => setDraft(current => ({ ...current, notifications: value }))} /><Button title="Salvar e abrir central" variant="soft" loading={saving} onPress={async () => { if (await save()) navigation.navigate("Notifications"); }} /></> : null}
+          {modal === "preferences" ? <><SettingSwitch title="Lista compacta" description="Reduz o espaço dos cartões de análises no prontuário." value={draft.appPreferences?.compactHistory === true} onValueChange={value => preference("compactHistory", value)} /><SettingSwitch title="Mais antigos primeiro" description="Altera a ordem das análises no prontuário. Desativado: mais recentes primeiro." value={draft.appPreferences?.oldestFirst === true} onValueChange={value => preference("oldestFirst", value)} /></> : null}
+          {modal === "help" ? faqs.map(([question, answer], index) => <View key={question} style={s.faq}><TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: faq === index }} style={s.faqHeading} onPress={() => setFaq(faq === index ? -1 : index)}><Text style={[s.rowTitle, s.copy]}>{question}</Text><Icon name={faq === index ? "minus" : "plus"} size={20} color={colors.primary} /></TouchableOpacity>{faq === index ? <Text style={s.muted}>{answer}</Text> : null}</View>) : null}
+          {modal === "logout" ? <><Text style={s.muted}>Você precisará entrar novamente para acessar seus registros.</Text><Button title="Sair da conta" loading={saving} onPress={async () => { setSaving(true); try { await logout(); setModal(""); navigation.reset({ index: 0, routes: [{ name: "Welcome" }] }); } catch (_) { setSaveError("Não foi possível encerrar a sessão. Tente novamente."); } finally { setSaving(false); } }} /><Button title="Continuar no app" variant="soft" disabled={saving} onPress={() => setModal("")} /></> : null}
+          {saveError ? <Text accessibilityRole="alert" style={s.error}>{saveError}</Text> : null}
+          {editable ? <Button title="Salvar alterações" loading={saving} onPress={save} /> : null}
+        </ScrollView>
+      </SafeAreaView></KeyboardAvoidingView>
+    </Modal>
+  </SafeAreaView>;
+}
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background }, content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 20, paddingBottom: 120, gap: 16 },
+  heading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 9 }, pageTitle: { fontFamily, fontSize: 24, fontWeight: "700", color: colors.text }, brand: { flexDirection: "row", alignItems: "center", gap: 5 }, brandText: { fontFamily, fontSize: 10, letterSpacing: 1, fontWeight: "700", color: colors.primary },
+  identity: { backgroundColor: colors.primary, padding: 24, borderRadius: 26, gap: 9 }, identityTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }, avatar: { width: 60, height: 60, borderRadius: 21, backgroundColor: "#E3F6F0", alignItems: "center", justifyContent: "center" }, initials: { fontFamily, fontSize: 23, color: colors.primary, fontWeight: "700" }, accountBadge: { borderWidth: 1, borderColor: "#47897E", padding: 8, borderRadius: 20 }, accountText: { fontFamily, color: "#D4EDE6", fontSize: 9, letterSpacing: 1.3 }, name: { fontFamily, fontSize: 26, fontWeight: "700", color: "white" }, email: { fontFamily, fontSize: 13, color: "#D4EDE6" }, editButton: { alignSelf: "flex-start", backgroundColor: "#E3F6F0", borderRadius: 12, padding: 12, flexDirection: "row", gap: 12, marginTop: 9, alignItems: "center" }, editText: { fontFamily, color: colors.primary, fontSize: 12, fontWeight: "600" },
+  section: { fontFamily, fontSize: 10, letterSpacing: 1.7, color: colors.textMuted, marginTop: 9 }, shortcuts: { flexDirection: "row", gap: 12 }, shortcut: { flex: 1, minWidth: 0, padding: 16, gap: 9, backgroundColor: "white", borderRadius: 22, borderWidth: 1, borderColor: colors.border }, icon: { width: 40, height: 40, backgroundColor: colors.primaryLight, borderRadius: 13, alignItems: "center", justifyContent: "center" }, rowTitle: { fontFamily, fontSize: 14, fontWeight: "600", color: colors.text }, muted: { fontFamily, fontSize: 12, lineHeight: 19, color: colors.textMuted }, copy: { flex: 1, minWidth: 0, gap: 4 }, link: { fontFamily, fontSize: 12, fontWeight: "600", color: colors.primary }, familyList: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, familyChip: { flexDirection: "row", alignItems: "center", gap: 4, padding: 8, backgroundColor: colors.primaryLight, borderRadius: 12 },
+  settings: { backgroundColor: "white", borderRadius: 22, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }, row: { flexDirection: "row", alignItems: "center", padding: 16, gap: 12, minHeight: 80 }, separator: { borderTopWidth: 1, borderColor: colors.border }, logout: { alignSelf: "center", flexDirection: "row", gap: 9, alignItems: "center", padding: 15 }, group: { padding: 16, gap: 12 }, error: { fontFamily, color: colors.danger, fontSize: 13, lineHeight: 20 }, success: { fontFamily, color: colors.primary, fontSize: 13 },
+  backdrop: { flex: 1, justifyContent: "flex-end", alignItems: "center", backgroundColor: "rgba(10,35,30,0.45)" }, sheet: { width: "100%", maxWidth: 640, maxHeight: "90%", backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28 }, sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 22, gap: 12 }, sheetTitle: { flex: 1, fontFamily, fontSize: 21, fontWeight: "700", color: colors.text }, sheetBody: { padding: 22, paddingTop: 0, paddingBottom: 32, gap: 20 }, switchRow: { flexDirection: "row", alignItems: "center", gap: 15, paddingVertical: 12 }, tip: { backgroundColor: colors.background, padding: 16, borderRadius: 16, flexDirection: "row", gap: 10 }, faq: { backgroundColor: colors.background, padding: 16, borderRadius: 16, gap: 12 }, faqHeading: { flexDirection: "row", alignItems: "center", gap: 10 }
 });

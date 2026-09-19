@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import Button from "../components/Button";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
 import BrandHero from "../components/BrandHero";
 import { fontFamily, colors, radius, shadows } from "../constants/theme";
-import { mockNotifications } from "../utils/mockData";
+
 
 function iconForType(type) {
   if (type === "alert") return "alert-outline";
@@ -23,22 +27,49 @@ function colorForType(type) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const { token } = useAuth();
+  const [items, setItems] = useState([]);
+  const [message, setMessage] = useState("");
+  const [revision, setRevision] = useState(0);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setItems([]);
+    setMessage(token ? "Carregando atualizações…" : "Entre na conta para consultar suas atualizações.");
+    async function load() {
+      try {
+        const { data } = await api.get("/profile");
+        if (!active) return;
+        const settings = data.profile?.settings || {};
+        if (settings.notifications === false) { setMessage("Atualizações desativadas. Você pode reativá-las no perfil."); return; }
+        const response = await api.get("/history?personId=self");
+        if (!active) return;
+        const records = Array.isArray(response.data) ? response.data : [];
+        setItems(records.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 20).map(item => ({
+          _id: item._id, type: "analysis", title: "Análise disponível", description: settings.appPreferences?.hideHealthPreviews ? "Toque para consultar seu registro" : item.possibleCondition || "Sua análise está salva", time: new Date(item.createdAt).toLocaleString("pt-BR"), analysis: item
+        })));
+        setMessage(records.length ? "" : "Suas análises salvas aparecerão aqui.");
+      } catch (_) { if (active) setMessage("Não foi possível carregar suas atualizações. Tente atualizar."); }
+    }
+    if (token) load();
+    return () => { active = false; };
+  }, [token, revision]));
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <BrandHero
           title="Notificações"
-          subtitle="Alertas, lembretes e atualizacoes recentes"
+          subtitle="Suas análises recentes, em um só lugar"
           onBack={() => navigation.goBack()}
         />
         <View style={styles.body}>
 
         <View style={styles.list}>
-          {mockNotifications.map((notification) => {
+          {message ? <Text style={styles.description}>{message}</Text> : null}
+          {items.map((notification) => {
             const itemColor = colorForType(notification.type);
 
             return (
-              <TouchableOpacity key={notification._id} style={styles.item} activeOpacity={0.86}>
+              <TouchableOpacity key={notification._id} style={styles.item} activeOpacity={0.86} accessibilityRole="button" onPress={() => navigation.navigate("Result", { analysis: notification.analysis })}>
                 <View style={[styles.iconBox, { backgroundColor: `${itemColor}18` }]}>
                   <MaterialCommunityIcons
                     name={iconForType(notification.type)}
@@ -61,6 +92,8 @@ export default function NotificationsScreen({ navigation }) {
             );
           })}
         </View>
+        <Button title={token ? "Atualizar" : "Entrar na conta"} variant="soft" onPress={() => token ? setRevision(value => value + 1) : navigation.navigate("Login", { returnToPrevious: true })} />
+        <Button title="Configurar no perfil" variant="outline" onPress={() => navigation.navigate("Profile")} />
         </View>
       </ScrollView>
       <BottomTab navigation={navigation} active="Profile" />

@@ -70,3 +70,17 @@ test('provider unavailability is distinguished from an incomplete response', asy
   axios.post = async () => { throw { response: { status: 503 } }; };
   await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.status === 503 && /temporariamente/.test(error.message));
 });
+
+test('analysis recovers after provider 503 and preserves the complete validated result', async () => {
+  process.env.GEMINI_API_KEY = 'test-only';
+  let calls = 0;
+  const payload = response();
+  axios.post = async () => {
+    if (++calls === 1) throw { response: { status: 503 } };
+    return { data: { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(payload) }] } }] } };
+  };
+  const result = await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.equal(calls, 2);
+  assert.deepEqual(result.report, payload.report);
+  assert.equal(result.source, 'gemini');
+});

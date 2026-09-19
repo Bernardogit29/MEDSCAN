@@ -15,13 +15,17 @@ function sanitizeUser(user) {
 
 async function register(req, res, next) {
   try {
-    const { name, email, age, password } = req.body;
+    const { age, password } = req.body;
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
 
-    if (!name || !email || age === undefined || age === "" || !password) {
+    if (!name || !email || age == null || String(age).trim() === "" || typeof password !== "string" || !password) {
       return res.status(400).json({ message: "Nome, idade, e-mail e senha são obrigatórios." });
     }
 
-    const numericAge = Number(age);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Informe um e-mail válido." });
+    if (password.length < 8 || Buffer.byteLength(password, "utf8") > 72) return res.status(400).json({ message: "Use uma senha com pelo menos 8 caracteres e até 72 bytes." });
+    const numericAge = typeof age === "boolean" ? NaN : Number(age);
     if (!Number.isInteger(numericAge) || numericAge < 0 || numericAge > 120) {
       return res.status(400).json({ message: "Informe uma idade válida entre 0 e 120 anos." });
     }
@@ -46,15 +50,17 @@ async function register(req, res, next) {
       token: createToken(user._id)
     });
   } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: "Este e-mail já está cadastrado." });
     next(error);
   }
 }
 
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
 
-    if (!email || !password) {
+    if (!email || typeof password !== "string" || !password) {
       return res.status(400).json({ message: "E-mail e senha são obrigatórios." });
     }
 

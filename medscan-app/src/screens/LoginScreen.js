@@ -19,14 +19,14 @@ export default function LoginScreen({ navigation, route }) {
       return;
     }
 
-    if (!email || !password) {
-      Alert.alert("Campos obrigatorios", "Informe e-mail e senha para continuar.");
+    if (!email.trim() || !password) {
+      setErrorMessage("Informe e-mail e senha para continuar.");
       return;
     }
 
     setErrorMessage("");
     try {
-      await login(email.trim(), password);
+      await login(email.trim().toLowerCase(), password);
       if (route.params?.returnToPrevious && navigation.canGoBack()) {
         navigation.goBack();
       } else {
@@ -59,12 +59,7 @@ export default function LoginScreen({ navigation, route }) {
           {errorMessage ? <Text accessibilityRole="alert" style={{ color: colors.danger, fontFamily, lineHeight: 22 }}>{errorMessage}</Text> : null}
           {loading ? <Text style={{ color: colors.textMuted, fontFamily, fontSize: 13, lineHeight: 20 }}>Conectando com segurança. O primeiro acesso pode levar até um minuto.</Text> : null}
           <Button title="Entrar" icon="login" onPress={handleLogin} loading={loading} />
-          <Button
-            title="Entrar com Google"
-            icon="google"
-            variant="outline"
-            onPress={() => Alert.alert("Google", "Botao visual preparado para autenticacao futura.")}
-          />
+
         </View>
 
         <Pressable onPress={() => navigation.navigate("Register")} style={styles.linkRow}>

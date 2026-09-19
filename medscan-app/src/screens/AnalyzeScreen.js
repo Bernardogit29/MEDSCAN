@@ -255,7 +255,7 @@ export default function AnalyzeScreen({ navigation, route }) {
               <Button title="Entrar na minha conta" onPress={() => navigation.navigate("Login", { returnToPrevious: true })} />
             </View>
           ) : <Button title="Receber orientação" icon="creation" onPress={handleAnalyze} loading={loading || bootstrapping} disabled={!peopleReady} />}
-          {loading ? <Text style={styles.previewText}>Estamos organizando sua orientação. Isso pode levar até um minuto.</Text> : null}
+          {loading ? <Text style={styles.previewText}>Estamos preparando sua orientação. Se a IA estiver ocupada, tentaremos novamente automaticamente. Isso pode levar até dois minutos.</Text> : null}
 
           <MedicalNotice title="Importante" />
           </View>

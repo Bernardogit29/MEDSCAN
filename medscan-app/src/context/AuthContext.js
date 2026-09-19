@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import api, { API_URL, setAuthToken } from "../api/client";
 import { getStoredItem, removeStoredItem, setStoredItem } from "../utils/storage";
 
+import { isSessionUsable } from "../utils/session";
 import { requestSession } from "../api/authRequest";
 
 const AuthContext = createContext(null);
@@ -28,10 +29,12 @@ export function AuthProvider({ children }) {
 
         const session = JSON.parse(storedSession);
 
-        if (session?.token && session?.user) {
+        if (isSessionUsable(session)) {
           setUser(session.user);
           setToken(session.token);
           setAuthToken(session.token);
+        } else {
+          await removeStoredItem(SESSION_KEY);
         }
       } catch (_error) {
         await removeStoredItem(SESSION_KEY);

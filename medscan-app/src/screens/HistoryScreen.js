@@ -29,6 +29,7 @@ export default function HistoryScreen({ navigation }) {
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [personId, setPersonId] = useState("self");
   const [history, setHistory] = useState([]);
+  const [preferences, setPreferences] = useState({ hideHealthPreviews: true });
   const [monitoring, setMonitoring] = useState({ records: [], events: [] });
   const [loading, setLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -45,7 +46,7 @@ export default function HistoryScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    setHistory([]); setMonitoring({ records: [], events: [] }); setHistoryError(""); setMonitoringError("");
+    setPreferences({ hideHealthPreviews: true }); setHistory([]); setMonitoring({ records: [], events: [] }); setHistoryError(""); setMonitoringError("");
     if (!user || !token) { setLoading(false); return; }
     setLoading(true);
     async function load() {
@@ -55,6 +56,7 @@ export default function HistoryScreen({ navigation }) {
       if (profile.status === "fulfilled") {
         const loaded = getMonitoredPeople(profile.value.data.user || user, profile.value.data.profile?.relatives || []);
         setPeople(loaded);
+        setPreferences(profile.value.data.profile?.settings?.appPreferences || {});
         if (!loaded.some(person => person.id === personId)) { setPersonId("self"); return; }
       }
       if (analyses.status === "fulfilled") setHistory(Array.isArray(analyses.value.data) ? analyses.value.data : []);
@@ -86,9 +88,17 @@ export default function HistoryScreen({ navigation }) {
     finally { setSaving(false); }
   }
   function analysisList(type) {
-    const items = history.filter(item => type === "symptoms" ? item.type === "symptoms" : item.type !== "symptoms");
-    return <View style={styles.expanded}>
-      {historyError ? <Text style={styles.muted}>{historyError}</Text> : !items.length ? <Text style={styles.muted}>Nenhum registro nesta categoria.</Text> : items.map(item => <TouchableOpacity accessibilityRole="button" key={item._id} style={styles.entry} onPress={() => navigation.navigate("Result", { analysis: item })}><Text style={styles.rowTitle}>{item.possibleCondition || "Análise registrada"}</Text><Text style={styles.muted}>{dateTime(item.createdAt)}</Text></TouchableOpacity>)}
+    const items = history.filter(item => type === "symptoms" ? item.type === "symptoms" : item.type !== "symptoms")
+      .sort((a, b) => (new Date(b.createdAt) - new Date(a.createdAt)) * (preferences.oldestFirst ? -1 : 1));
+    return <View style={styles.analysisList}>
+      {historyError ? <Text style={styles.muted}>{historyError}</Text> : !items.length ? <Text style={styles.muted}>{loading ? "Carregando registros…" : "Nenhum registro nesta categoria."}</Text> : <>
+        <Text style={styles.listCaption}>{items.length} {items.length === 1 ? "registro" : "registros"} · {preferences.oldestFirst ? "mais antigos primeiro" : "mais recentes primeiro"}</Text>
+        {items.map(item => <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Abrir ${type === "symptoms" ? "orientação" : "análise"} de ${dateTime(item.createdAt)}`} key={item._id} style={[styles.analysisCard, preferences.compactHistory && styles.compactCard]} onPress={() => navigation.navigate("Result", { analysis: item })}>
+          <View style={styles.analysisMeta}><View style={styles.analysisBadge}><MaterialCommunityIcons name={type === "symptoms" ? "message-text-outline" : "file-document-outline"} size={14} color={colors.primary} /><Text style={styles.analysisKind}>{type === "symptoms" ? "ORIENTAÇÃO" : "ANÁLISE"}</Text></View><Text style={styles.analysisDate}>{dateTime(item.createdAt)}</Text></View>
+          <View style={styles.analysisHeading}><Text style={styles.analysisTitle} numberOfLines={preferences.compactHistory ? 1 : 2}>{preferences.hideHealthPreviews ? "Prévia de saúde oculta" : item.possibleCondition || "Análise registrada"}</Text><MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} /></View>
+          {!preferences.compactHistory ? <Text style={styles.analysisLink}>{preferences.hideHealthPreviews ? "Toque para abrir o registro" : "Ver orientação completa"}</Text> : null}
+        </TouchableOpacity>)}
+      </>}
     </View>;
   }
   return <SafeAreaView style={styles.safe}>
@@ -143,6 +153,17 @@ const styles = StyleSheet.create({
   copy: { flex: 1 }, rowTitle: { fontFamily, fontSize: 15, fontWeight: "600", color: colors.text },
   muted: { fontFamily, fontSize: 12, lineHeight: 19, color: colors.textMuted, marginTop: 3 },
   expanded: { padding: 16, paddingTop: 0, gap: 10 },
+  analysisList: { padding: 12, paddingTop: 0, gap: 10 },
+  listCaption: { fontFamily, fontSize: 11, color: colors.textMuted, paddingHorizontal: 5, marginBottom: 3 },
+  analysisCard: { backgroundColor: colors.background, borderRadius: 17, padding: 16, gap: 12, borderWidth: 1, borderColor: colors.border },
+  compactCard: { padding: 12, gap: 8 },
+  analysisMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  analysisBadge: { flexDirection: "row", alignItems: "center", gap: 5 },
+  analysisKind: { fontFamily, fontSize: 9, fontWeight: "700", letterSpacing: 1, color: colors.primary },
+  analysisDate: { fontFamily, fontSize: 10, color: colors.textMuted },
+  analysisHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  analysisTitle: { flex: 1, fontFamily, fontSize: 14, lineHeight: 21, fontWeight: "600", color: colors.text },
+  analysisLink: { fontFamily, fontSize: 11, color: colors.primary },
   entry: { borderTopWidth: 1, borderColor: colors.border, paddingVertical: 12, gap: 4 },
   notice: { fontFamily, fontSize: 13, lineHeight: 21, color: colors.textMuted, paddingVertical: 10 },
   event: { backgroundColor: colors.background, padding: 15, borderRadius: 16, gap: 4 },

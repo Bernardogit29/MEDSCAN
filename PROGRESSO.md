@@ -56,3 +56,30 @@ As telas antigas de monitoramento ainda possuem dados de demonstração; não co
 - Monitoramento deixa de criar medições em GET e passa a consultar registros por pessoa; leitura mais recente de cada indicador.
 - Testes: 8 novos casos (comparações e controllers), todos passaram. Build web passou. Layout e abertura do formulário inspecionados; nenhum registro fictício foi gravado na conta do usuário.
 - IMPORTANTE: API Render continua na versão anterior. Publicar as mudanças do backend é necessário para liberar o relatório e o formulário no Expo apontando para Render. Frontend desabilita registro quando o endpoint novo está indisponível. Nenhum deploy feito.
+
+## 19/09/2026 — Perfil e apresentação do prontuário
+- Prontuário: cartões individuais de análises com categoria, data, título limitado a duas linhas e acesso aos detalhes. Preferências de compactação, ordem e ocultação de prévias carregadas do perfil.
+- Perfil: novo cabeçalho verde escuro com iniciais, edição de nome/idade, atalhos de monitoramento/família e configurações agrupadas.
+- Configurações: privacidade das prévias; central de atualizações ativável; lista compacta/ordem; ajuda com perguntas expansíveis. Salvamento via PUT /profile, preservando as demais preferências lidas novamente antes de salvar.
+- Familiares novos não recebem sinais vitais fictícios. Removida contagem fixa de aparelhos no perfil.
+- Notificações: substituídos avisos fictícios por análises reais recentes da conta, respeitando preferência de visibilidade e ativação.
+- Validação: telas compiladas com Babel; conferidos perfil, painéis de configurações, ajuda e lista real do prontuário no navegador. Não alteradas preferências ou dados pessoais da conta para testar o salvamento.
+
+## 19/09/2026 — Preparação para testes por link no navegador
+- Link público informado pelo usuário: https://medscan-h9jq.onrender.com/. Bundle público aponta para https://medscan-api-f658.onrender.com/api.
+- Corrigidas validações do cadastro/login para mensagens inline web; normalização do e-mail; validação de idade, senha e duplicação no backend; removido botão Google sem integração.
+- Sessões expiradas/malformadas deixam de ser restauradas no frontend (API continua responsável por verificar JWT).
+- 29 testes automatizados aprovados, incluindo cadastro com hash real e login, senha incorreta, duplicação, campos inválidos e expiração da sessão.
+- Smoke test público com conta identificada de QA passou (201 cadastro, 200 login/perfil, 401 senha incorreta, 409 duplicação). Script reproduzível scripts/smoke-auth.cjs; credenciais temporárias fora do repositório, nunca impressas.
+- Três análises fictícias reais no backend público passaram em 14–15s; modelo gemini-3.6-flash, relatório completo. Caso urgente priorizou atendimento; relato escasso usou Indeterminado e perguntas. Não equivale a validação clínica.
+- Local gemini-2.5-pro continua retornando 404; tentativa temporária com 3.5-flash retornou 503. Nenhuma configuração de modelo alterada.
+- Roteiro do grupo em TESTE-DO-GRUPO.md. Há uma conta QA e três análises fictícias no banco público.
+- Publicação pendente. A revisão automática bloqueou acesso a dashboard.render.com por falta de autorização explícita ao painel privado. Não contornar por CLI/git; solicitar autorização se for publicar.
+
+## Correção da intermitência da IA — 19/09/2026
+- Nova política providerRetry: até três chamadas ao provedor para HTTP 500/502/503/504, pausas de 1s e 2s e orçamento total de 120s. Cada chamada limita o timeout ao tempo restante (máximo 60s).
+- Retentativas apenas dentro do serviço Gemini, antes da gravação de Analysis. Sem repetição do POST do app e sem troca de modelo.
+- Erros de configuração, cota, resposta inválida e timeout ambíguo não são repetidos automaticamente.
+- Interface avisa que a preparação pode levar dois minutos. Falha persistente mantém mensagem explícita; o relato permanece no formulário.
+- 13 testes do serviço/retentativas aprovados, incluindo recuperação 503→sucesso e esgotamento do prazo. AnalyzeScreen compilada com Babel.
+- Correção somente local, conforme restrição do usuário de não alterar o Render. Para o link público receber a correção, ainda é necessário publicar o backend e frontend. Nenhum deploy realizado.
