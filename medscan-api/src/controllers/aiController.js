@@ -1,14 +1,12 @@
 const Analysis = require("../models/Analysis");
 const { analyzeMedicalData } = require("../services/aiService");
+const { resolveAnalysisContext } = require("../services/analysisContext");
 
 async function analyze(req, res, next) {
   try {
-    const {
-      symptoms = "",
-      type,
-      monitoredPersonId = "self",
-      monitoredPersonName
-    } = req.body;
+    const context = await resolveAnalysisContext(req.user, req.body);
+    const { symptoms } = context;
+    const { type } = req.body;
     const file = req.file;
     const analysisType = type || (file ? "image" : "symptoms");
     const imageUrl = file ? `/uploads/${file.filename}` : "";
@@ -26,8 +24,7 @@ async function analyze(req, res, next) {
 
     const analysis = await Analysis.create({
       userId: req.user._id,
-      monitoredPersonId,
-      monitoredPersonName: monitoredPersonName || req.user.name,
+      ...context,
       type: analysisType,
       symptoms,
       imageUrl,

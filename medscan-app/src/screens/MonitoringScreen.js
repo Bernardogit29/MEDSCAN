@@ -1,3 +1,4 @@
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -22,6 +23,7 @@ import { mockDevices, mockMonitoring } from "../utils/mockData";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function MonitoringScreen({ navigation }) {
+  const desktop = useDesktop();
   const { user } = useAuth();
   const [monitoring, setMonitoring] = useState({ vitals: {}, alerts: [] });
   const [devices, setDevices] = useState(mockDevices);
@@ -97,8 +99,8 @@ export default function MonitoringScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
+      <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
         <BrandHero
           onNotifications={() => navigation.navigate("Notifications")}
           title="Monitoramento"

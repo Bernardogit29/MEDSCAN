@@ -1,5 +1,6 @@
-import React from "react";
-import { Image, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
+import React, { useEffect, useState, useRef } from "react";
+import { Image, Linking, ScrollView, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
@@ -8,7 +9,8 @@ import Card from "../components/Card";
 import Header from "../components/Header";
 import BrandHero from "../components/BrandHero";
 import MedicalNotice from "../components/MedicalNotice";
-import { API_ORIGIN } from "../api/client";
+import Input from "../components/Input";
+import api, { API_ORIGIN } from "../api/client";
 import { fontFamily, colors } from "../constants/theme";
 
 function Section({ title, icon, text, items, alert }) {
@@ -31,9 +33,44 @@ function Section({ title, icon, text, items, alert }) {
 }
 
 export default function ResultScreen({ navigation, route }) {
+  const desktop = useDesktop();
+  const scrollRef = useRef(null);
   const analysis = route.params?.analysis;
+  const [addition, setAddition] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [versions, setVersions] = useState([]);
+  useEffect(() => {
+    let active = true;
+    setAddition(""); setError("");
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    setVersions(route.params?.caseVersions || (analysis ? [analysis] : []));
+    if (analysis?._id) api.get(`/history?personId=${encodeURIComponent(analysis.monitoredPersonId || "self")}`).then(({ data }) => {
+      if (!active || !Array.isArray(data)) return;
+      const root = String(analysis.caseId || analysis._id);
+      setVersions(data.filter(item => String(item.caseId || item._id) === root).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [analysis?._id]);
+  async function complement() {
+    if (saving) return;
+    if (!addition.trim() || addition.length > 4000) { setError("Escreva a nova informação em até 4.000 caracteres."); return; }
+    setSaving(true); setError("");
+    try {
+      const form = new FormData();
+      form.append("parentAnalysisId", analysis._id);
+      form.append("additionalInfo", addition.trim());
+      form.append("type", "symptoms");
+      const { data } = await api.post("/ai/analyze", form, { timeout: 150000 });
+      if (!data.analysis?.parentAnalysisId) throw new Error("O serviço precisa ser atualizado para salvar complementos vinculados. Seu texto foi mantido.");
+      const updated = [...versions, data.analysis];
+      navigation.setParams({ analysis: data.analysis, caseVersions: updated, imageUri: null });
+      setAddition("");
+    } catch (failure) { setError(failure.response?.data?.message || failure.message || "Não foi possível atualizar. Seu texto foi mantido."); }
+    finally { setSaving(false); }
+  }
   if (!analysis) return (
-    <SafeAreaView style={styles.safe}><View style={styles.empty}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]}><View style={styles.empty}>
       <Header title="Nenhuma análise selecionada" showBell={false} />
       <Button title="Descrever sintomas" onPress={() => navigation.navigate("Analyze")} />
     </View></SafeAreaView>
@@ -46,15 +83,12 @@ export default function ResultScreen({ navigation, route }) {
   const urgent = !isLocal && risk === "Alto";
   const imageUri = route.params?.imageUri || (analysis.imageUrl ? (analysis.imageUrl.startsWith("http") ? analysis.imageUrl : `${API_ORIGIN}${analysis.imageUrl}`) : null);
   const questions = report.questionsForClinician || [];
-  function complement() {
-    const initialSymptoms = [analysis.symptoms, "Informações complementares:", ...questions.map(question => `${question}\nResposta: `)].filter(Boolean).join("\n\n");
-    navigation.push("Analyze", { initialSymptoms, type: "symptoms", monitoredPersonId: analysis.monitoredPersonId || "self", revision: Date.now() });
-  }
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, desktop && desktopContent]}>
         <BrandHero title="Sua orientação" subtitle={isLocal ? "Registro anterior · orientação local" : "Entenda o relato e os próximos passos"} onBack={() => navigation.goBack()} />
         <View style={styles.body}>
+        {versions.length > 1 ? <Card><Text style={styles.sectionTitle}>Evolução deste relato</Text><Text style={styles.hint}>Cada versão preserva a orientação daquele momento.</Text><View style={styles.versions}>{versions.map((version, index) => <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: version._id === analysis._id }} disabled={saving} key={version._id} onPress={() => navigation.setParams({ analysis: version, caseVersions: versions, imageUri: null })} style={[styles.version, version._id === analysis._id && styles.selectedVersion]}><Text style={[styles.versionText, version._id === analysis._id && { color: "white" }]}>{index === 0 ? "Original" : `Atualização ${index}`}</Text><Text style={[styles.hint, version._id === analysis._id && { color: "#D0EBE3" }]}>{new Date(version.createdAt).toLocaleString("pt-BR")}</Text></TouchableOpacity>)}</View></Card> : null}
         {isLocal ? <Text style={styles.legacy}>Este registro foi gerado por regras locais ou demonstração, sem análise do Gemini. Faça uma nova análise para obter uma orientação atualizada.</Text> : null}
         <View style={[styles.overview, urgent && styles.urgent]}>
           <View style={styles.overviewTop}><MaterialCommunityIcons name={urgent ? "alert-circle-outline" : "creation"} size={22} color="white" /><Text style={styles.eyebrow}>{urgent ? "ATENÇÃO AO PRÓXIMO PASSO" : "LEITURA DO SEU RELATO"}</Text></View>
@@ -73,11 +107,15 @@ export default function ResultScreen({ navigation, route }) {
         <Section title="O que fazer agora" icon="check-circle-outline" items={report.nextSteps} />
         <Section title="Sinais de alerta" icon="alert-outline" items={report.redFlags} alert />
         <Section title="Quando buscar atendimento" icon="hospital-building" text={report.whenToSeekCare} />
-        {questions.length ? <>
-          <Section title="Para entender melhor" icon="comment-question-outline" items={questions} />
-          <Text style={styles.hint}>Você pode responder às perguntas e gerar uma nova análise com o relato anterior. Se precisar avaliar a imagem novamente, anexe-a de novo.</Text>
-          <Button title="Complementar meu relato" icon="message-plus-outline" onPress={complement} />
-        </> : <Button title="Fazer nova análise" onPress={() => navigation.navigate("Analyze")} />}
+        {questions.length ? <Section title="Para entender melhor" icon="comment-question-outline" items={questions} /> : null}
+        <Card style={{ gap: 16 }}>
+          <View style={styles.sectionHeading}><MaterialCommunityIcons name="message-plus-outline" size={22} color={colors.primary} /><Text style={styles.sectionTitle}>Adicionar uma informação</Text></View>
+          <Text style={styles.hint}>Responda às perguntas ou conte o que mudou. A nova orientação ficará junto desta no prontuário, sem apagar a anterior. Imagens anteriores não são reavaliadas neste complemento de texto.</Text>
+          <Input label="O que você quer acrescentar?" value={addition} onChangeText={setAddition} multiline placeholder="Ex.: começou ontem à noite e piora quando caminho…" />
+          {error ? <Text accessibilityRole="alert" style={styles.formError}>{error}</Text> : null}
+          <Button style={desktop ? { alignSelf: "flex-start" } : undefined} title="Atualizar orientação" icon="creation" loading={saving} disabled={!analysis._id} onPress={complement} />
+          {saving ? <Text style={styles.hint}>Estamos analisando o complemento. Em caso de instabilidade, tentaremos novamente automaticamente. Aguarde até dois minutos.</Text> : null}
+        </Card>
         <Section title="Limites desta orientação" icon="information-outline" text={report.limitations} />
         <Button title="Buscar atendimento no mapa" icon="map-marker-outline" variant="outline" onPress={() => Linking.openURL("https://www.google.com/maps/search/hospitais+perto+de+mim")} />
         <MedicalNotice />
@@ -89,6 +127,11 @@ export default function ResultScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  versions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
+  version: { padding: 12, borderRadius: 12, backgroundColor: colors.background, gap: 4 },
+  selectedVersion: { backgroundColor: colors.primary },
+  versionText: { fontFamily, fontSize: 13, fontWeight: "600", color: colors.primary },
+  formError: { fontFamily, color: colors.danger, lineHeight: 21, marginVertical: 10 },
   safe: { flex: 1, backgroundColor: colors.background },
   body: { padding: 20, gap: 16 },
   content: { paddingBottom: 130, width: "100%", maxWidth: 720, alignSelf: "center" },

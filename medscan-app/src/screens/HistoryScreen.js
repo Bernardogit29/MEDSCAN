@@ -1,3 +1,5 @@
+import { groupAnalyses } from "../utils/analysisGroups";
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +27,7 @@ function Row({ icon, title, subtitle, onPress, expanded }) {
 }
 
 export default function HistoryScreen({ navigation }) {
+  const desktop = useDesktop();
   const { user, token } = useAuth();
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [personId, setPersonId] = useState("self");
@@ -88,21 +91,21 @@ export default function HistoryScreen({ navigation }) {
     finally { setSaving(false); }
   }
   function analysisList(type) {
-    const items = history.filter(item => type === "symptoms" ? item.type === "symptoms" : item.type !== "symptoms")
-      .sort((a, b) => (new Date(b.createdAt) - new Date(a.createdAt)) * (preferences.oldestFirst ? -1 : 1));
+    const items = groupAnalyses(history, preferences.oldestFirst).filter(group => type === "symptoms" ? group.original.type === "symptoms" : group.original.type !== "symptoms");
     return <View style={styles.analysisList}>
       {historyError ? <Text style={styles.muted}>{historyError}</Text> : !items.length ? <Text style={styles.muted}>{loading ? "Carregando registros…" : "Nenhum registro nesta categoria."}</Text> : <>
         <Text style={styles.listCaption}>{items.length} {items.length === 1 ? "registro" : "registros"} · {preferences.oldestFirst ? "mais antigos primeiro" : "mais recentes primeiro"}</Text>
-        {items.map(item => <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Abrir ${type === "symptoms" ? "orientação" : "análise"} de ${dateTime(item.createdAt)}`} key={item._id} style={[styles.analysisCard, preferences.compactHistory && styles.compactCard]} onPress={() => navigation.navigate("Result", { analysis: item })}>
+        {items.map(group => { const item = group.latest; return <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Abrir ${type === "symptoms" ? "orientação" : "análise"} de ${dateTime(item.createdAt)}`} key={group.id} style={[styles.analysisCard, preferences.compactHistory && styles.compactCard]} onPress={() => navigation.navigate("Result", { analysis: item, caseVersions: group.versions })}>
           <View style={styles.analysisMeta}><View style={styles.analysisBadge}><MaterialCommunityIcons name={type === "symptoms" ? "message-text-outline" : "file-document-outline"} size={14} color={colors.primary} /><Text style={styles.analysisKind}>{type === "symptoms" ? "ORIENTAÇÃO" : "ANÁLISE"}</Text></View><Text style={styles.analysisDate}>{dateTime(item.createdAt)}</Text></View>
           <View style={styles.analysisHeading}><Text style={styles.analysisTitle} numberOfLines={preferences.compactHistory ? 1 : 2}>{preferences.hideHealthPreviews ? "Prévia de saúde oculta" : item.possibleCondition || "Análise registrada"}</Text><MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} /></View>
+          {group.versions.length > 1 ? <Text style={styles.analysisLink}>{group.versions.length} versões do mesmo relato · ver evolução</Text> : null}
           {!preferences.compactHistory ? <Text style={styles.analysisLink}>{preferences.hideHealthPreviews ? "Toque para abrir o registro" : "Ver orientação completa"}</Text> : null}
-        </TouchableOpacity>)}
+        </TouchableOpacity>; })}
       </>}
     </View>;
   }
-  return <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={styles.content}>
+  return <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
+    <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]}>
       <View style={styles.heading}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")}><MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>Prontuário</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar prontuário" onPress={() => setRevision(value => value + 1)}><MaterialCommunityIcons name="refresh" size={23} color={colors.primary} /></TouchableOpacity></View>
       <View style={styles.people}>
         {people.map(person => <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: person.id === personId }} key={person.id} onPress={() => selectPerson(person.id)} style={[styles.person, person.id === personId && styles.personActive]}><MaterialCommunityIcons name="account-circle-outline" size={24} color={person.id === personId ? colors.white : colors.primary} /><View><Text style={[styles.personName, person.id === personId && styles.white]}>{person.id === "self" ? "Você" : person.name}</Text><Text style={[styles.personMeta, person.id === personId && styles.white]}>{person.id === "self" ? "Titular" : "Familiar"}</Text></View></TouchableOpacity>)}

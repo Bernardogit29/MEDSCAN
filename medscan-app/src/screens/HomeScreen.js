@@ -1,3 +1,4 @@
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,23 +17,27 @@ const metrics = [
 ];
 
 export default function HomeScreen({ navigation }) {
+  const desktop = useDesktop();
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "bem-vindo";
   const date = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]} edges={["top", "left", "right"]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, desktop && desktopContent]}>
         <BrandHero title={`Olá, ${firstName}`} subtitle="Seu cuidado em um só lugar" badge="Seu espaço de saúde" onNotifications={() => navigation.navigate("Notifications")} />
 
         <View style={styles.body}>
           <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Visão geral</Text><Text style={styles.link}>Hoje, {date}</Text></View>
-          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("History")} activeOpacity={0.9} style={styles.recordCard}>
+          <View style={desktop && styles.dashboardRow}>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("History")} activeOpacity={0.9} style={[styles.recordCard, desktop && { flex: 1 }]}>
             <View pointerEvents="none" style={styles.cardHalo} />
             <Text style={styles.eyebrow}>PRONTUÁRIO INTELIGENTE</Text>
             <Text style={styles.cardTitle}>Seu histórico, mais claro.</Text>
             <Text style={styles.cardCopy}>Suas análises e exames organizados{`\n`}para acompanhar sua evolução.</Text>
             <View style={styles.cta}><Text style={styles.ctaText}>Ver prontuário</Text><MaterialCommunityIcons name="arrow-top-right" size={18} color={colors.primary} /></View>
           </TouchableOpacity>
+          {desktop ? <View style={styles.desktopQuick}><Text style={styles.sectionTitle}>Como podemos ajudar?</Text><Text style={styles.metricNote}>Escolha por onde começar seu cuidado.</Text><ActionRow title="Conversar com a IA" subtitle="Conte o que está sentindo" icon="creation" onPress={() => navigation.navigate("Analyze", { type: "symptoms" })} /><ActionRow title="Adicionar exame" subtitle="Organize um novo documento" icon="file-plus-outline" onPress={() => navigation.navigate("Analyze", { type: "exam" })} /></View> : null}
+          </View>
 
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Sinais vitais</Text>
@@ -40,7 +45,7 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={styles.grid}>
             {metrics.map(metric => (
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${metric.title}: sem medição. Abrir monitoramento`} key={metric.title} style={styles.metric} onPress={() => navigation.navigate("Monitoring")}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${metric.title}: sem medição. Abrir monitoramento`} key={metric.title} style={[styles.metric, desktop && { width: "23%" }]} onPress={() => navigation.navigate("Monitoring")}>
                 <View style={styles.metricHeader}><View style={styles.metricIcon}><MaterialCommunityIcons name={metric.icon} size={18} color={colors.primary} /></View><Text style={styles.metricLabel}>{metric.title}</Text></View>
                 <Text style={styles.metricValue}>—</Text>
                 <Text style={styles.metricUnit}>{metric.unit} · sem medição</Text>
@@ -49,11 +54,13 @@ export default function HomeScreen({ navigation }) {
           </View>
           <Text style={styles.metricNote}>Suas medições aparecerão quando houver dados conectados.</Text>
 
+          {!desktop ? <>
           <Text style={styles.sectionTitle}>Acesso rápido</Text>
           <View style={styles.actions}>
             <ActionRow title="Conversar com a IA" subtitle="Entenda seus sintomas com mais contexto" icon="creation" onPress={() => navigation.navigate("Analyze", { type: "symptoms" })} />
             <ActionRow title="Adicionar exame" subtitle="Envie uma imagem do seu documento" icon="file-plus-outline" onPress={() => navigation.navigate("Analyze", { type: "exam" })} />
           </View>
+          </> : null}
           <View style={styles.footer}><MaterialCommunityIcons name="shield-check-outline" size={16} color={colors.textMuted} /><Text style={styles.footerText}>Informação para cuidar melhor de você.</Text></View>
         </View>
       </ScrollView>
@@ -63,6 +70,8 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  dashboardRow: { flexDirection: "row", gap: 24, alignItems: "stretch" },
+  desktopQuick: { flex: 1, gap: 14, padding: 22, borderRadius: 24, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   safe: { flex: 1, backgroundColor: colors.background },
   content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 110 },
   body: { padding: 20, gap: 17 },

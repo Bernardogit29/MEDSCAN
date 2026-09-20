@@ -83,3 +83,13 @@ As telas antigas de monitoramento ainda possuem dados de demonstração; não co
 - Interface avisa que a preparação pode levar dois minutos. Falha persistente mantém mensagem explícita; o relato permanece no formulário.
 - 13 testes do serviço/retentativas aprovados, incluindo recuperação 503→sucesso e esgotamento do prazo. AnalyzeScreen compilada com Babel.
 - Correção somente local, conforme restrição do usuário de não alterar o Render. Para o link público receber a correção, ainda é necessário publicar o backend e frontend. Nenhum deploy realizado.
+
+## 20/09/2026 — Layout de PC e versões do relato
+- Web a partir de 1100px: menu lateral fixo nas telas principais, conteúdo até 1200px, margens próprias e quatro indicadores por linha. Home com visão geral e ações em duas colunas. Entrada/login/cadastro em duas colunas a partir de 1000px. Celular mantém navegação inferior.
+- Resultado: card de complemento com campo de texto, validação, estado de envio e preservação do texto em falhas. Nova análise recebe parentAnalysisId/caseId e additionalInfo; relato original não é sobrescrito.
+- API resolve o registro pai pela conta autenticada e herda pessoa/caso do banco. Limites de texto: 4000 caracteres novos, 12000 acumulados.
+- Prontuário agrupa por caseId (ou _id para antigos), mostra número de versões e abre a mais recente; resultado oferece alternância entre versões. Registros antigos sem vínculo não são mesclados por semelhança de texto.
+- 41 testes automatizados passaram, incluindo vínculo entre versões, isolamento da conta e ausência de gravação quando a IA falha. Conferidos desktop, entrada mobile e card de complemento no navegador; nenhum complemento enviado na conta pessoal.
+- IA: retentativas já implementadas (três chamadas/120s). Teste direto com credencial local e gemini-3.6-flash retornou 429 (cota). API pública respondeu 201 em 14,9s para caso fictício. Não é possível eliminar interrupções externas apenas com código; distinguir cota e falha transitória. Nenhuma variável do Render alterada.
+- Mudanças de UI e vínculo entre relatos precisam de publicação conjunta do backend e frontend. Restrição anterior do usuário: não mexer no Render. Não houve commit, push ou deploy nesta etapa.
+- Build web final aprovado com --max-workers 1; primeira tentativa encontrou erro transitório de leitura de dependência no Windows. Nenhuma dependência foi alterada.

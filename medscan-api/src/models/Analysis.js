@@ -8,12 +8,15 @@ const analysisSchema = new mongoose.Schema({
   },
   monitoredPersonId: {
     type: String,
-    default: "maria"
+    default: "self"
   },
   monitoredPersonName: {
     type: String,
-    default: "Maria Silva"
+    default: ""
   },
+  caseId: { type: mongoose.Schema.Types.ObjectId, ref: "Analysis", default: null },
+  parentAnalysisId: { type: mongoose.Schema.Types.ObjectId, ref: "Analysis", default: null },
+  additionalInfo: { type: String, default: "" },
   type: {
     type: String,
     enum: ["exam", "image", "symptoms"],

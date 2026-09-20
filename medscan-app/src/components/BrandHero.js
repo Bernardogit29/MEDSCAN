@@ -1,11 +1,13 @@
 import React from "react";
+import { useDesktop } from "../utils/responsive";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, fontFamily } from "../constants/theme";
 
-export default function BrandHero({ title, subtitle, badge, onBack, onNotifications }) {
+export default function BrandHero({ title, subtitle, badge, onBack, onNotifications, desktop = false }) {
+  const wide = useDesktop();
   return (
-    <View style={styles.hero}>
+    <View style={[styles.hero, wide && { borderRadius: 24, padding: 32 }, desktop && styles.desktopHero]}>
       <View pointerEvents="none" style={styles.halo} />
       <View pointerEvents="none" style={styles.innerHalo} />
       <View style={styles.brandRow}>
@@ -15,14 +17,17 @@ export default function BrandHero({ title, subtitle, badge, onBack, onNotificati
         </View>
         {onNotifications ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={onNotifications} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={21} color="white" /></TouchableOpacity> : null}
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+      <Text style={[styles.title, desktop && styles.desktopTitle]}>{title}</Text>
+      <Text style={[styles.subtitle, desktop && styles.desktopSubtitle]}>{subtitle}</Text>
       {badge ? <View style={styles.status}><View style={styles.dot} /><Text style={styles.statusText}>{badge}</Text></View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  desktopHero: { flex: 1, minWidth: 0, minHeight: 520, borderRadius: 32, padding: 40, paddingTop: 40, paddingBottom: 40, justifyContent: "center" },
+  desktopTitle: { fontSize: 42, lineHeight: 48, letterSpacing: -1.4 },
+  desktopSubtitle: { fontSize: 16, lineHeight: 25, marginTop: 16 },
   hero: { backgroundColor: colors.primary, padding: 24, paddingTop: 22, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: "hidden" },
   halo: { position: "absolute", width: 240, height: 240, borderRadius: 120, borderWidth: 25, borderColor: "#ffffff06", backgroundColor: "#0B806D", right: -85, bottom: -120 },
   innerHalo: { position: "absolute", width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: "#ffffff18", right: -55, bottom: -90 },

@@ -1,3 +1,4 @@
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, Text, View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +28,7 @@ function SettingSwitch({ title, description, value, onValueChange }) {
   return <View style={s.switchRow}><View style={s.copy}><Text style={s.rowTitle}>{title}</Text><Text style={s.muted}>{description}</Text></View><Switch accessibilityLabel={title} value={value} onValueChange={onValueChange} trackColor={{ false: "#CBD9D4", true: colors.primary }} thumbColor="#FFFFFF" /></View>;
 }
 export default function ProfileScreen({ navigation, route }) {
+  const desktop = useDesktop();
   const { user, token, logout, refreshMe } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -89,8 +91,8 @@ export default function ProfileScreen({ navigation, route }) {
   }
   const initials = (person.name || "Você").trim().split(/\s+/).slice(0, 2).map(word => word[0]).join("").toUpperCase();
   const editable = ["edit", "family", "privacy", "notifications", "preferences"].includes(modal);
-  return <SafeAreaView style={s.safe}>
-    <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+  return <SafeAreaView style={[s.safe, desktop && desktopPage]}>
+    <ScrollView contentContainerStyle={[s.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
       <View style={s.heading}><Text style={s.pageTitle}>Meu perfil</Text><View style={s.brand}><Icon name="pulse" size={16} color={colors.primary} /><Text style={s.brandText}>MEDSCAN</Text></View></View>
       <View style={s.identity}>
         <View style={s.identityTop}><View style={s.avatar}><Text style={s.initials}>{initials}</Text></View><View style={s.accountBadge}><Text style={s.accountText}>{token ? "SUA CONTA" : "BOAS-VINDAS"}</Text></View></View>

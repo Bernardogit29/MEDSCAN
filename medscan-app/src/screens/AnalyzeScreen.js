@@ -1,3 +1,4 @@
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -31,6 +32,7 @@ import {
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function AnalyzeScreen({ navigation, route }) {
+  const desktop = useDesktop();
   const { user, token, bootstrapping } = useAuth();
   const [sessionExpired, setSessionExpired] = useState(false);
   const needsLogin = !bootstrapping && (!user || !token || sessionExpired);
@@ -177,9 +179,9 @@ export default function AnalyzeScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
           <BrandHero
             title="Vamos entender melhor"
             subtitle="Conte o que está acontecendo com você."
@@ -261,7 +263,7 @@ export default function AnalyzeScreen({ navigation, route }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <BottomTab navigation={navigation} active="Home" />
+      <BottomTab navigation={navigation} active="Analyze" />
     </SafeAreaView>
   );
 }

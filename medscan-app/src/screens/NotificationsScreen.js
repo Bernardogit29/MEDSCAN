@@ -1,3 +1,4 @@
+import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import api from "../api/client";
@@ -27,6 +28,7 @@ function colorForType(type) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const desktop = useDesktop();
   const { token } = useAuth();
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState("");
@@ -54,8 +56,8 @@ export default function NotificationsScreen({ navigation }) {
     return () => { active = false; };
   }, [token, revision]));
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
+      <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
         <BrandHero
           title="Notificações"
           subtitle="Suas análises recentes, em um só lugar"
