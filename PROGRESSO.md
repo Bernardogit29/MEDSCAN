@@ -93,3 +93,10 @@ As telas antigas de monitoramento ainda possuem dados de demonstração; não co
 - IA: retentativas já implementadas (três chamadas/120s). Teste direto com credencial local e gemini-3.6-flash retornou 429 (cota). API pública respondeu 201 em 14,9s para caso fictício. Não é possível eliminar interrupções externas apenas com código; distinguir cota e falha transitória. Nenhuma variável do Render alterada.
 - Mudanças de UI e vínculo entre relatos precisam de publicação conjunta do backend e frontend. Restrição anterior do usuário: não mexer no Render. Não houve commit, push ou deploy nesta etapa.
 - Build web final aprovado com --max-workers 1; primeira tentativa encontrou erro transitório de leitura de dependência no Windows. Nenhuma dependência foi alterada.
+
+## 22/09/2026 — Idioma web e tradução automática
+- Foto do navegador mostra textos alterados (Prontuário → Pronúncia) e glifos de ícones corrompidos. Textos-fonte corretos; HTML anterior declarava lang=en. Tradução automática é a causa provável, não reproduzida no computador do professor.
+- Configurado web.lang=pt-BR e template public/index.html com UTF-8, translate=no e notranslate para preservar interface e fontes de ícones. Mensagem sem JavaScript também em português.
+- Títulos de todas as rotas no navegador agora em português com marca MEDSCAN, sem nomes internos como History.
+- Build web aprovado; HTML exportado conferido; navegação compilada e glifos destacados validados na biblioteca. Consulta HTTP pública não disponível nesta sessão; não houve teste no navegador do professor.
+- Correção local pronta. Nenhum push/deploy nem alteração do Render, respeitando restrição anterior do usuário. Publicação do frontend pendente.

@@ -14,6 +14,18 @@ import ProfileScreen from "../screens/ProfileScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 
 const Stack = createNativeStackNavigator();
+const pageTitles = {
+  Welcome: "Bem-vindo",
+  Login: "Entrar",
+  Register: "Criar conta",
+  Home: "Início",
+  Analyze: "Análise",
+  Result: "Resultado da análise",
+  History: "Prontuário",
+  Monitoring: "Monitoramento",
+  Profile: "Perfil",
+  Notifications: "Notificações"
+};
 
 const linking = {
   getPathFromState: (state, options) => getPathFromState(publicNavigationState(state), options),
@@ -36,7 +48,9 @@ const linking = {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer linking={linking} documentTitle={{
+      formatter: (_options, route) => `${pageTitles[route?.name] || "Seu cuidado, mais perto"} | MEDSCAN`
+    }}>
       <Stack.Navigator
         initialRouteName="Welcome"
         screenOptions={{
