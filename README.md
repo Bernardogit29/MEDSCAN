@@ -179,3 +179,33 @@ Os parâmetros clínicos de navegação permanecem em memória e não entram nas
 `GET /api/monitoring/history?personId=self` retorna até 100 medições e comparações descritivas entre valores do mesmo indicador/pessoa. `POST /api/monitoring` aceita `monitoredPersonId`, `heartRate` (bpm), `glucose` (mg/dL), `measuredAt` (ISO; padrão agora) e `note`. Pelo menos um indicador deve ser informado. O formulário usa o horário do envio; os horários são exibidos no fuso local do aparelho. Não há detecção clínica de emergência ou integração com wearables nesta implementação.
 
 Registros antigos, criados com valores de demonstração e sem `source: recorded`, não entram nos relatórios. Publique o backend atualizado antes de usar os novos endpoints no app conectado ao Render. Testes: `node --test medscan-api/src/services/monitoringEvents.test.js medscan-api/src/controllers/monitoringController.test.js`.
+
+### Diagnóstico e recuperação da IA
+
+`GEMINI_MODEL` define o modelo principal. Após um erro HTTP 500/502/503/504, a próxima tentativa usa `GEMINI_FALLBACK_MODEL` (padrão: `gemini-3.7-flash`), dentro do mesmo limite total de três chamadas e 120 segundos. Defina a alternativa como vazia para repetir apenas o principal. O mesmo relato, imagem e esquema são mantidos; o resultado registra o modelo que efetivamente respondeu. Somente respostas completas são salvas. Essa recuperação não garante disponibilidade do provedor.
+
+No fluxo exclusivo Gemini, erros de cota retornam HTTP 429 e `AI_QUOTA_EXCEEDED`, sem alternar modelos. Com Groq habilitada para texto, há uma tentativa no provedor independente antes de devolver a falha. Configuração, acesso negado, indisponibilidade e timeout têm códigos próprios. Consulte cota/saldo para 429 e modelo/chave para erros de configuração; repetir chamadas não corrige esses problemas.
+
+`node scripts/diagnose-ai.cjs` consulta o modelo configurado e a lista do provedor sem imprimir credenciais. A listagem não garante que a geração funcione. `--generate` faz uma chamada curta; `--analysis` valida o formato completo com um relato fictício e sem gravação no banco. `--model=NOME` seleciona o modelo somente para o processo de diagnóstico. Essas duas opções usam a cota da API.
+
+`node scripts/check-public-ai.cjs` usa apenas a conta QA previamente criada por `smoke-auth.cjs`, com um relato fictício; uma análise bem-sucedida fica registrada nessa conta. Nunca usa a sessão pessoal do navegador.
+
+### Groq como reserva de texto
+
+Configure somente no backend (`medscan-api/.env` local ou Environment do serviço da API):
+
+```dotenv
+GROQ_FALLBACK_ENABLED=true
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
+```
+
+Crie a chave em https://console.groq.com/keys e preencha `GROQ_API_KEY`. Mantenha a conta Groq no plano Free para não habilitar cobrança por uso. A integração não altera o plano da conta e não consegue garantir gratuidade se ela estiver em um plano pago. Consulte [limites atuais](https://console.groq.com/docs/rate-limits); relatos longos e várias análises seguidas podem exceder a cota. Nunca use `EXPO_PUBLIC_*` para a chave. Reinicie a API após editar o `.env`.
+
+Com chave e flag true, relatos **sem imagem** usam Gemini primeiro e uma única tentativa Groq após HTTP 429/500/502/503/504, dentro de 120s totais e até 60s por chamada. Essa alternativa substitui as retentativas Gemini para esse relato. Sucesso do principal não chama a reserva. Erros de configuração, respostas inválidas ou timeout ambíguo não acionam Groq. Se a Groq também retornar 429, a solicitação termina sem novas tentativas. Sem chave ou com flag false, o fluxo anterior Gemini continua.
+
+O modelo padrão é de texto: análises com imagens permanecem no Gemini, preservando o anexo, sem análise parcial silenciosa. O Groq recebe as mesmas instruções, relato completo e JSON Schema, com saída limitada a 3072 tokens; respostas truncadas ou incompletas são recusadas. O prontuário guarda um único resultado completo com `source: groq` e modelo real, preservando os vínculos do relato. O modelo é configurável, mas precisa suportar [JSON Schema estrito](https://console.groq.com/docs/structured-outputs).
+
+Testes automatizados simulam os provedores e não fazem chamadas reais. Após configurar a chave, ainda é necessário validar qualidade em português, acesso e cota com relatos fictícios antes de usar na feira. Publicação do backend é necessária para a mudança chegar ao app no Render.
+
+Para testar as correções locais, confirme que `medscan-app/.env` usa `EXPO_PUBLIC_API_URL=http://localhost:3000/api` e reinicie o Expo após alterar esse endereço. Abrir a interface no localhost não garante que ela esteja usando o backend local. A API deve estar em execução na porta 3000, com conexão ao banco. `node scripts/check-public-ai.cjs --local` testa esse backend usando somente a conta QA já existente; uma resposta bem-sucedida cria um registro fictício nessa conta.

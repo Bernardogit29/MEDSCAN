@@ -6,7 +6,8 @@ function errorHandler(error, req, res, next) {
   }
 
   return res.status(error.status || 500).json({
-    message: error.message || "Erro interno no servidor."
+    message: error.message || "Erro interno no servidor.",
+    ...(typeof error.code === "string" && error.code.startsWith("AI_") ? { code: error.code } : {})
   });
 }
 
