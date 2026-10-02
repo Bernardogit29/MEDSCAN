@@ -142,3 +142,54 @@ As telas antigas de monitoramento ainda possuem dados de demonstração; não co
 - Teste real com conta QA existente e relato fictício via API local: HTTP201 em31s, source=groq, model=openai/gpt-oss-120b. Um registro fictício criado somente na conta QA. Isso valida funcionamento técnico; não é avaliação clínica nem garantia permanente de cota/disponibilidade.
 - Expo estava na porta8081 e seu bundle ainda continha Render mesmo após editar.env. Reiniciado com cache limpo, variável local explícita e processo oculto PID24844. Logs temporários medscan-expo-local.log/medscan-expo-local-error.log. Bundle final conferido: EXPO_PUBLIC_API_URL=http://localhost:3000/api. App disponível em http://localhost:8081.
 - scripts/check-public-ai.cjs aceita --local sem expor senha/token e informa provider/model/status. README documenta distinção frontend/backend local. Usuário deve recarregar a aba após reinício; pode precisar entrar novamente se a sessão tiver sido emitida por outro segredo JWT. Nenhum deploy no Render.
+
+## 27/09/2026 — Linha do tempo de cada relato
+- Implementado item 1 solicitado: componente CaseTimeline na tela de orientação, acessível ao abrir um relato no prontuário. Substitui os botões antigos de versões por sequência vertical com data/hora, relato inicial, complementos e resumo da orientação de cada momento.
+- Cada evento expande/recolhe; orientação completa pode ser selecionada e aparece no topo. Diferencia registro mais recente da orientação em exibição. Mostra somente additionalInfo em complementos, evitando repetir o relato acumulado em cada etapa.
+- getCaseVersions filtra pelo vínculo explícito e pessoa, ordena, elimina duplicações e preserva o registro aberto quando a busca está incompleta. Não mistura queixas semelhantes. Branches a partir de versões antigas indicam sua origem; texto antigo sem complemento separado não é inventado.
+- Carregamento e erro de histórico visíveis, com ação de tentar novamente. Tentativa de recarregar histórico não limpa o texto de complemento. Menu lateral/inferior marca Prontuário na tela do relato.
+- 7 testes de agrupamento/linha do tempo aprovados; Babel e exportação web passaram. Prévia isolada com registros fictícios conferida no navegador em desktop e celular, incluindo seleção de orientação anterior. Arquivos temporários de prévia removidos. Sem chamadas de IA, alterações de registros pessoais ou deploy no Render.
+
+### 27/09/2026 — Resultado mais leve no celular
+- Cabeçalho móvel compacto, título e espaçamentos ajustados; cabeçalho desktop preservado.
+- Evolução substituída por Histórico deste relato, recolhido por padrão. Lista simples do mais recente ao inicial, detalhes sob demanda, sem cartões aninhados nem repetição do resumo selecionado.
+- Mantidos vínculos, datas, indicação de ramificações, seleção de orientação anterior e avisos/repetição de carregamento.
+- Validação: 7 testes existentes de agrupamento/linha do tempo passaram; prévia com dados fictícios em 390x844 conferida no navegador, incluindo expandir e selecionar outro registro. Não testado em aparelho físico nesta etapa.
+- Alterações locais; sem publicação no Render.
+- Compilação web Expo concluída com sucesso.
+
+### 27/09/2026 — Erro de formato ao complementar o relato
+- Não foi possível reproduzir o HTTP 400 informado: Gemini e Groq passaram em chamadas reais independentes com contexto fictício, sem gravação no banco ou uso de relatos pessoais.
+- Corrigido tratamento genérico de HTTP 400: falha explícita de geração JSON no Groq permite uma nova geração (somente uma), dentro do orçamento existente de 120s. Não aceita failed_generation nem relaxa validação de saída.
+- Erros desconhecidos/configuração/cota continuam sem repetição indiscriminada. Mensagens distinguem falha de saída e limite de contexto; logs registram categoria técnica sem texto bruto, chaves ou dados de saúde.
+- 35 testes passaram (serviço IA, retentativas, contexto e controlador). A causa exata do erro da captura ainda não foi confirmada; não prometer resolução definitiva de um erro não reproduzido. Sem alteração no Render.
+
+### 27/09/2026 — Contexto das perguntas nos complementos
+- Causa confirmada no código: complemento enviava sintomas acumulados e resposta nova, mas omitia as perguntas da orientação selecionada.
+- Agora resolveAnalysisContext busca as perguntas no registro pertencente ao usuário; salva followUpContext por rodada (perguntas + resposta), sem confiar em contexto enviado pelo cliente. Mantém as rodadas anteriores da versão selecionada, inclusive ao ramificar.
+- Gemini e Groq recebem as mesmas perguntas numeradas e respostas. Prompt v3 orienta associar números somente à rodada correspondente, não tratar perguntas como sintomas e esclarecer ambiguidades.
+- symptoms/additionalInfo continuam contendo somente o relato do usuário. Registros antigos sem perguntas não ganham perguntas inventadas. Limite adicional de contexto: 24.000 caracteres.
+- Tela orienta responder por número e usa placeholder correspondente.
+- Validação: 40 testes passaram; verificada serialização do schema Mongoose e compilação Babel do ResultScreen. Sem chamada clínica real nesta etapa nem publicação no Render. Complementos antigos já gerados não são recalculados automaticamente.
+
+### 27/09/2026 — Sinais vitais fictícios para apresentação
+- A pedido do usuário, início exibe valores de demonstração: 72 bpm, glicose 98 mg/dL, pressão 120/80 mmHg e 6.240 passos.
+- Monitoramento preenche indicadores sem medição com os mesmos exemplos, mais sono de 7h30; mantém valores reais existentes e identifica cada exemplo como Demonstração.
+- Dados somente de apresentação no frontend; não são gravados no prontuário nem enviados à IA. Compilação Babel das duas telas e diff --check passaram. Sem publicação no Render.
+
+### 01/10/2026 — Tema escuro concluído
+- Tema escuro em Perfil > Preferências, disponível também sem login e sem depender da API; mudança imediata e salva automaticamente no aparelho. Falhas de gravação são exibidas e não confirmam sucesso.
+- ThemeProvider com paletas semânticas claras/escuras; telas e componentes passam a calcular estilos pela paleta atual sem remontar a navegação. Fundo #0B171B, cartões #142328, verde profundo e acentos menta seguindo referência do usuário.
+- Adaptados início, análise/resultado, prontuário, monitoramento, perfil/modais, notificações, login/cadastro, componentes compartilhados, navegação e barra de status.
+- Persistência web em medscan.appearance; nativa em arquivo de preferências do expo-file-system (dependência agora explícita). Preferência local ao dispositivo, sem sincronização da conta; armazenamento de sessão não alterado.
+- Verificação: alternância clara/escura no modal, persistência após reload, início e formulário em viewport 390x844 e início desktop. Quatro testes de armazenamento passaram; export web e Android/Hermes passou (execução do compilador autorizada após bloqueio inicial da sandbox).
+- Não testado em aparelho físico. Sem publicação no Render. Expo de verificação segue em 8082, sessão 43270.
+- Capturas em output/theme/inicio-escuro.png e output/theme/preferencias-escuro.png.
+
+### 01/10/2026 — Início mais vivo, inspirado nas novas referências
+- Cabeçalho próprio com degradê menta no tema claro e verde profundo no escuro, símbolo médico decorativo e marca em destaque.
+- Card de prontuário com degradê e ilustração vetorial de documentos; texto e navegação preservados.
+- Mini gráficos vetoriais por indicador: glicose verde, frequência rosa, pressão azul, atividade em barras. Valores e gráficos explicitamente demonstrativos, sem banco/API ou alerta clínico fictício.
+- Ícone de adicionar exame azul; temas claro/escuro preservados.
+- Dependências compatíveis com SDK instalado: react-native-svg 15.15.4 e expo-linear-gradient ~57.0.2.
+- Prévia verificada em 390x844 nos dois temas, incluindo área inferior e atalhos. Capturas em output/home. Sem publicação no Render.

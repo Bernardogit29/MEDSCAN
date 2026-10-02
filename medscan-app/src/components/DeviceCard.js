@@ -1,7 +1,8 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 
 function iconForType(type) {
   const map = {
@@ -16,6 +17,7 @@ function iconForType(type) {
 }
 
 export default function DeviceCard({ device }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={styles.card}>
       <View style={styles.iconCircle}>
@@ -34,17 +36,17 @@ export default function DeviceCard({ device }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     width: "48%",
     minHeight: 154,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 14,
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#EEF4F2",
+    borderColor: colors.border,
     ...shadows.card
   },
   iconCircle: {

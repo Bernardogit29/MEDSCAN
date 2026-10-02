@@ -1,10 +1,12 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { useDesktop } from "../utils/responsive";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { colors, fontFamily } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function BrandHero({ title, subtitle, badge, onBack, onNotifications, desktop = false }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const wide = useDesktop();
   return (
     <View style={[styles.hero, wide && { borderRadius: 24, padding: 32 }, desktop && styles.desktopHero]}>
@@ -24,12 +26,12 @@ export default function BrandHero({ title, subtitle, badge, onBack, onNotificati
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   desktopHero: { flex: 1, minWidth: 0, minHeight: 520, borderRadius: 32, padding: 40, paddingTop: 40, paddingBottom: 40, justifyContent: "center" },
   desktopTitle: { fontSize: 42, lineHeight: 48, letterSpacing: -1.4 },
   desktopSubtitle: { fontSize: 16, lineHeight: 25, marginTop: 16 },
-  hero: { backgroundColor: colors.primary, padding: 24, paddingTop: 22, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: "hidden" },
-  halo: { position: "absolute", width: 240, height: 240, borderRadius: 120, borderWidth: 25, borderColor: "#ffffff06", backgroundColor: "#0B806D", right: -85, bottom: -120 },
+  hero: { backgroundColor: colors.hero, padding: 24, paddingTop: 22, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: "hidden" },
+  halo: { position: "absolute", width: 240, height: 240, borderRadius: 120, borderWidth: 25, borderColor: "#ffffff06", backgroundColor: colors.heroHalo, right: -85, bottom: -120 },
   innerHalo: { position: "absolute", width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: "#ffffff18", right: -55, bottom: -90 },
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 28 },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },

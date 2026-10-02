@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -12,17 +13,19 @@ import BrandHero from "../components/BrandHero";
 import HealthCard from "../components/HealthCard";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, colors, radius } from "../constants/theme";
+import { fontFamily, radius } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
   getMonitoredPeople,
   findMonitoredPerson,
 } from "../utils/monitoredPeople";
-import { mockDevices, mockMonitoring } from "../utils/mockData";
+import { mockDevices } from "../utils/mockData";
+import { demoVitals } from "../utils/demoVitals";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function MonitoringScreen({ navigation }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user } = useAuth();
   const [monitoring, setMonitoring] = useState({ vitals: {}, alerts: [] });
@@ -91,6 +94,7 @@ export default function MonitoringScreen({ navigation }) {
   const selectedPerson = findMonitoredPerson(selectedPersonId, people);
   const vitals = monitoring.vitals || {};
   const alerts = monitoring.alerts || [];
+  const hasDemoVitals = ["heartRate", "glucose", "bloodPressure", "sleep"].some(key => vitals[key] == null);
 
   async function selectPerson(personId) {
     setSelectedPersonId(personId);
@@ -104,7 +108,7 @@ export default function MonitoringScreen({ navigation }) {
         <BrandHero
           onNotifications={() => navigation.navigate("Notifications")}
           title="Monitoramento"
-          subtitle="Acompanhe a saude em tempo real"
+          subtitle="Acompanhe seus sinais vitais"
         />
         <View style={styles.body}>
 
@@ -121,7 +125,7 @@ export default function MonitoringScreen({ navigation }) {
                 </Text>
                 <View style={styles.statusBadge}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>{monitoring.monitoredPerson?.status || "Sem medições"}</Text>
+                  <Text style={styles.statusText}>{hasDemoVitals ? "Dados de demonstração" : monitoring.monitoredPerson?.status || "Medições registradas"}</Text>
                 </View>
               </View>
             </View>
@@ -196,16 +200,16 @@ export default function MonitoringScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Sinais vitais</Text>
           </View>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.updated}>Medições registradas</Text>
+            <Text style={styles.updated}>{hasDemoVitals ? "Demonstração" : "Registradas"}</Text>
             <MaterialCommunityIcons name="refresh" size={20} color={colors.textMuted} />
           </View>
         </View>
 
         <View style={styles.grid}>
-          <HealthCard status="Registrado" title="Frequência cardíaca" value={vitals.heartRate ?? "—"} unit="bpm" icon="heart-pulse" color={colors.primary} />
-          <HealthCard status="Registrado" title="Glicose" value={vitals.glucose ?? "—"} unit="mg/dL" icon="water-outline" color={colors.primary} />
-          <HealthCard status="Registrado" title="Pressão arterial" value={vitals.bloodPressure ?? "—"} unit="mmHg" icon="gauge" color={colors.primary} />
-          <HealthCard title="Sono" value={vitals.sleep ?? "—"} unit="" icon="sleep" color={colors.primary} status="Registrado" />
+          <HealthCard status={vitals.heartRate == null ? "Demonstração" : "Registrado"} title="Frequência cardíaca" value={vitals.heartRate ?? demoVitals.heartRate} unit="bpm" icon="heart-pulse" color={colors.primary} />
+          <HealthCard status={vitals.glucose == null ? "Demonstração" : "Registrado"} title="Glicose" value={vitals.glucose ?? demoVitals.glucose} unit="mg/dL" icon="water-outline" color={colors.primary} />
+          <HealthCard status={vitals.bloodPressure == null ? "Demonstração" : "Registrado"} title="Pressão arterial" value={vitals.bloodPressure ?? demoVitals.bloodPressure} unit="mmHg" icon="gauge" color={colors.primary} />
+          <HealthCard title="Sono" value={vitals.sleep ?? demoVitals.sleep} unit="" icon="sleep" color={colors.primary} status={vitals.sleep == null ? "Demonstração" : "Registrado"} />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -276,7 +280,7 @@ export default function MonitoringScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background
@@ -325,7 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    backgroundColor: "#DCFCE7",
+    backgroundColor: colors.successLight,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7
@@ -337,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success
   },
   statusText: {
-    color: "#11762D",
+    color: colors.successText,
     fontWeight: "700"
   },
   personActions: {
@@ -374,7 +378,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white
+    backgroundColor: colors.surface
   },
   peopleMenu: {
     position: "absolute",
@@ -406,7 +410,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#E7F8F2",
+    backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -426,12 +430,12 @@ const styles = StyleSheet.create({
   },
   currentBadge: {
     borderRadius: 999,
-    backgroundColor: "#DCFCE7",
+    backgroundColor: colors.successLight,
     paddingHorizontal: 12,
     paddingVertical: 7
   },
   currentText: {
-    color: "#11762D",
+    color: colors.successText,
     fontFamily, fontSize: 12,
     fontWeight: "700"
   },
@@ -528,7 +532,7 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   addDevice: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,

@@ -17,6 +17,7 @@ const analysisSchema = new mongoose.Schema({
   caseId: { type: mongoose.Schema.Types.ObjectId, ref: "Analysis", default: null },
   parentAnalysisId: { type: mongoose.Schema.Types.ObjectId, ref: "Analysis", default: null },
   additionalInfo: { type: String, default: "" },
+  followUpContext: { type: [{ _id: false, questions: [String], answer: String }], default: [] },
   type: {
     type: String,
     enum: ["exam", "image", "symptoms"],

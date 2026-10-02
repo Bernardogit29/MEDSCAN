@@ -24,3 +24,14 @@ test('provider failure never saves an incomplete revision', async () => {
   await controller().analyze({ user: { _id: 'owner' }, body: { parentAnalysisId: '123456789012345678901234', additionalInfo: 'Novo contexto' } }, response(), e => { failure = e; });
   assert.equal(failure.status, 503);
 });
+
+test('controller sends and saves the same question-answer context for future complements', async () => {
+  const parent={_id:'123456789012345678901234',symptoms:'Original',result:{report:{questionsForClinician:['Usa óculos?']}}};
+  Analysis.findOne=async()=>parent;
+  let sent,saved;
+  aiService.analyzeMedicalData=async input=>{sent=input;return {report:{}}};
+  Analysis.create=async value=>{saved=value;return value};
+  await controller().analyze({user:{_id:'owner'},body:{parentAnalysisId:parent._id,additionalInfo:'1-sim'}},response(),e=>{throw e});
+  assert.deepEqual(sent.followUpContext,[{questions:['Usa óculos?'],answer:'1-sim'}]);
+  assert.deepEqual(saved.followUpContext,sent.followUpContext);
+});

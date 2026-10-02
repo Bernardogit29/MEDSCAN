@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useEffect, useState } from "react";
 import {
@@ -22,7 +23,7 @@ import Input from "../components/Input";
 import MedicalNotice from "../components/MedicalNotice";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
@@ -32,6 +33,7 @@ import {
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function AnalyzeScreen({ navigation, route }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user, token, bootstrapping } = useAuth();
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -268,14 +270,14 @@ export default function AnalyzeScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   loginNotice: { backgroundColor: colors.primaryLight, borderRadius: 20, padding: 18, gap: 12 },
   loginTitle: { color: colors.primary, fontFamily, fontSize: 16, fontWeight: "600" },
   loginCopy: { color: colors.textMuted, fontFamily, fontSize: 13, lineHeight: 20 },
   fieldLabel: { color: colors.text, fontFamily, fontSize: 14, fontWeight: "600" },
   intensityRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  intensityChip: { padding: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
-  intensityActive: { backgroundColor: colors.primary },
+  intensityChip: { padding: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  intensityActive: { backgroundColor: colors.hero },
   error: { color: colors.danger, lineHeight: 22 },
   safe: {
     flex: 1,
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   previewRow: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 12,
     flexDirection: "row",
@@ -339,6 +341,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9"
+    backgroundColor: colors.background
   }
 });

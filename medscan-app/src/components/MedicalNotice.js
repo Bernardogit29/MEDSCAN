@@ -1,12 +1,14 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius } from "../constants/theme";
+import { fontFamily, radius } from "../constants/theme";
 
 export const medicalNoticeText =
   "Esta análise não substitui uma consulta médica. Em caso de urgência, procure atendimento imediatamente.";
 
 export default function MedicalNotice({ title = "Aviso importante" }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={styles.notice}>
       <MaterialCommunityIcons name="shield-check-outline" size={42} color={colors.primary} />
@@ -18,7 +20,7 @@ export default function MedicalNotice({ title = "Aviso importante" }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   notice: {
     borderRadius: radius.lg,
     backgroundColor: colors.primaryLight,

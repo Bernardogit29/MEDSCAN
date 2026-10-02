@@ -13,6 +13,7 @@ async function analyze(req, res, next) {
 
     const result = await analyzeMedicalData({
       symptoms,
+      followUpContext: context.followUpContext,
       image: file
         ? {
             filename: file.filename,

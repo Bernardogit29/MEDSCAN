@@ -1,7 +1,8 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 
 export default function Button({
   title,
@@ -13,6 +14,7 @@ export default function Button({
   style,
   textStyle
 }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const isPrimary = variant === "primary";
   const isOutline = variant === "outline";
   const isSoft = variant === "soft";
@@ -61,7 +63,7 @@ export default function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   button: {
     minHeight: 56,
     borderRadius: radius.md,
@@ -72,11 +74,11 @@ const styles = StyleSheet.create({
     gap: 10
   },
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.hero,
     ...shadows.soft
   },
   outline: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.primaryMedium
   },

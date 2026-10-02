@@ -12,7 +12,16 @@ async function resolveAnalysisContext(user, body) {
     if (!addition || addition.length > 4000) throw invalid('Escreva o complemento em até 4.000 caracteres.');
     const symptoms = `${parent.symptoms || ''}\n\nInformações adicionais fornecidas agora:\n${addition}`;
     if (symptoms.length > 12000) throw invalid('Este relato atingiu o limite de texto. Inicie um novo relato com um resumo das informações.');
-    return { symptoms, additionalInfo: addition, parentAnalysisId: parent._id, caseId: parent.caseId || parent._id, monitoredPersonId: parent.monitoredPersonId || 'self', monitoredPersonName: parent.monitoredPersonName || user.name };
+    const questions = parent.result?.report?.questionsForClinician;
+    // Use only the owned, selected record. The client cannot replace the questions.
+    const followUpContext = [...(parent.followUpContext || []).map(turn => ({
+      questions: [...turn.questions], answer: turn.answer
+    })), {
+      questions: Array.isArray(questions) ? questions.filter(q => typeof q === 'string' && q.trim()) : [],
+      answer: addition
+    }];
+    if (JSON.stringify(followUpContext).length > 24000) throw invalid('Este relato atingiu o limite de contexto. Inicie um novo relato resumindo as informações.');
+    return { symptoms, followUpContext, additionalInfo: addition, parentAnalysisId: parent._id, caseId: parent.caseId || parent._id, monitoredPersonId: parent.monitoredPersonId || 'self', monitoredPersonName: parent.monitoredPersonName || user.name };
   }
   const personId = body.monitoredPersonId || 'self';
   let name = user.name;

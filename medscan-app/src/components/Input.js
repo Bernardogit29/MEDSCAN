@@ -1,7 +1,8 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius } from "../constants/theme";
+import { fontFamily, radius } from "../constants/theme";
 
 export default function Input({
   label,
@@ -14,6 +15,7 @@ export default function Input({
   multiline = false,
   style
 }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={[styles.wrapper, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -38,7 +40,7 @@ export default function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   wrapper: {
     gap: 8
   },
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",

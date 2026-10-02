@@ -253,3 +253,55 @@ test('images remain on Gemini and are never stripped for the text-only reserve',
     assert.equal(result.source, 'gemini'); assert.equal(result.imageReceived, true);
   } finally { fs.stat = stat; fs.readFile = read; }
 });
+
+test('explicit Groq generated JSON failure retries once with the same complete context', async () => {
+  enableGroq(); const calls = [];
+  axios.post = async (url, body) => {
+    calls.push({url,body});
+    if (calls.length === 1) throw {response:{status:503}};
+    if (calls.length === 2) throw {response:{status:400,data:{error:{code:'json_validate_failed'}}}};
+    return groqReply();
+  };
+  assert.equal((await analyzeMedicalData({symptoms:'Relato fictício. Complemento: sim.'})).source,'groq');
+  assert.equal(calls.length,3);
+  assert.deepEqual(calls[1],calls[2]);
+});
+
+test('repeated Groq output failures stop without accepting failed_generation', async () => {
+  enableGroq(); let calls=0;
+  axios.post=async()=>{if(++calls===1)throw {response:{status:503}};throw {response:{status:400,data:{error:{code:'json_validate_failed',failed_generation:JSON.stringify(response())}}}};};
+  await assert.rejects(analyzeMedicalData({symptoms:'fictício'}),e=>e.code==='AI_OUTPUT_FORMAT');
+  assert.equal(calls,3);
+});
+
+test('unknown request errors and unsupported formats are not retried', async () => {
+  enableGroq();
+  for(const message of ['Unknown error','This model does not support response format json_schema']) {
+    let calls=0;
+    axios.post=async()=>{if(++calls===1)throw {response:{status:503}};throw {response:{status:400,data:{error:{message}}}};};
+    await assert.rejects(analyzeMedicalData({symptoms:'fictício'}),e=>e.code==='AI_REQUEST_REJECTED');
+    assert.equal(calls,2);
+  }
+});
+
+test('provider diagnostics never log echoed input, generated content or keys', async () => {
+  enableGroq(); const warn=console.warn; const logs=[]; console.warn=(...args)=>logs.push(args);
+  try {
+    axios.post=async()=>{throw {response:{status:400,data:{error:{message:'sensitive-input secret-key',code:'sensitive-input',failed_generation:'private output'}}}};};
+    await assert.rejects(analyzeMedicalData({symptoms:'fictício'}));
+    const output=JSON.stringify(logs);
+    assert.doesNotMatch(output,/sensitive-input|secret-key|private output/);
+    assert.match(output,/unclassified/);
+  } finally { console.warn=warn; }
+});
+
+test('numbered question-answer rounds reach both providers in the same structured context', async () => {
+  enableGroq(); const payloads=[];
+  axios.post=async(url,body)=>{
+    if(url.includes('googleapis.com')) {payloads.push(JSON.parse(body.contents[0].parts[0].text));throw {response:{status:503}};}
+    payloads.push(JSON.parse(body.messages[1].content));return groqReply();
+  };
+  await analyzeMedicalData({symptoms:'Relato fictício',followUpContext:[{questions:['Usa óculos?','Melhora ao descansar?'],answer:'1-sim, 2-não'}]});
+  assert.deepEqual(payloads[0],payloads[1]);
+  assert.deepEqual(payloads[0].complementos,[{perguntasDaIA:[{numero:1,pergunta:'Usa óculos?'},{numero:2,pergunta:'Melhora ao descansar?'}],respostaDaPessoa:'1-sim, 2-não'}]);
+});

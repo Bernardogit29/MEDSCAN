@@ -1,9 +1,12 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 
-export default function HealthCard({ title, value, unit, icon, color = colors.primary, status = "Normal" }) {
+export default function HealthCard({ title, value, unit, icon, color, status = "Normal" }) {
+  const { colors, styles } = useAppTheme(createStyles);
+  color = color || colors.primary;
   return (
     <View style={styles.card}>
       <View style={[styles.iconCircle, { backgroundColor: `${color}16` }]}>
@@ -20,17 +23,17 @@ export default function HealthCard({ title, value, unit, icon, color = colors.pr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     width: "48%",
     minHeight: 160,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 14,
     alignItems: "flex-start",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#EEF4F2",
+    borderColor: colors.border,
     ...shadows.card
   },
   iconCircle: {
@@ -58,7 +61,7 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   badge: {
-    backgroundColor: "#DDF7E5",
+    backgroundColor: colors.successLight,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -73,7 +76,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success
   },
   badgeText: {
-    color: "#11762D",
+    color: colors.successText,
     fontFamily, fontSize: 12,
     fontWeight: "700"
   }

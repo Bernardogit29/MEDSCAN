@@ -1,8 +1,10 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { colors, radius, shadows } from "../constants/theme";
+import { radius, shadows } from "../constants/theme";
 
 export default function Card({ children, style, bordered = false }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={[styles.card, bordered && styles.bordered, style]}>
       {children}
@@ -10,9 +12,9 @@ export default function Card({ children, style, bordered = false }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 18,
     borderWidth: 1,

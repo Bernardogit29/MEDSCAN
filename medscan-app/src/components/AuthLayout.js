@@ -1,10 +1,12 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BrandHero from "./BrandHero";
-import { colors } from "../constants/theme";
+
 
 export default function AuthLayout({ title, subtitle, navigation, children }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 1000;
   return <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -18,12 +20,12 @@ export default function AuthLayout({ title, subtitle, navigation, children }) {
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { width: "100%", maxWidth: 720, alignSelf: "center", paddingBottom: 32 },
   layout: { width: "100%" },
   desktopContent: { maxWidth: 1200, flexGrow: 1, justifyContent: "center", padding: 40 },
   desktopLayout: { flexDirection: "row", alignItems: "center", gap: 40 },
   desktopBody: { flex: 1, minWidth: 0, margin: 0, padding: 32, gap: 22 },
-  body: { margin: 20, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, gap: 24 }
+  body: { margin: 20, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, gap: 24 }
 });

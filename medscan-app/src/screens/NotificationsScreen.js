@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
@@ -9,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
 import BrandHero from "../components/BrandHero";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 
 
 function iconForType(type) {
@@ -20,7 +21,7 @@ function iconForType(type) {
   return "file-check-outline";
 }
 
-function colorForType(type) {
+function colorForType(type, colors) {
   if (type === "alert") return colors.warning;
   if (type === "recommendation") return colors.danger;
   if (type === "device") return colors.info;
@@ -28,6 +29,7 @@ function colorForType(type) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { token } = useAuth();
   const [items, setItems] = useState([]);
@@ -68,7 +70,7 @@ export default function NotificationsScreen({ navigation }) {
         <View style={styles.list}>
           {message ? <Text style={styles.description}>{message}</Text> : null}
           {items.map((notification) => {
-            const itemColor = colorForType(notification.type);
+            const itemColor = colorForType(notification.type, colors);
 
             return (
               <TouchableOpacity key={notification._id} style={styles.item} activeOpacity={0.86} accessibilityRole="button" onPress={() => navigation.navigate("Result", { analysis: notification.analysis })}>
@@ -103,7 +105,7 @@ export default function NotificationsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
     gap: 14
   },
   item: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 16,
     flexDirection: "row",

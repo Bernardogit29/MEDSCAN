@@ -1,5 +1,6 @@
 import React from "react";
-import { NavigationContainer, getPathFromState } from "@react-navigation/native";
+import { NavigationContainer, getPathFromState, DefaultTheme, DarkTheme } from "@react-navigation/native";
+import { useAppTheme } from "../context/ThemeContext";
 import { publicNavigationState } from "../utils/navigationState";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import WelcomeScreen from "../screens/WelcomeScreen";
@@ -47,8 +48,11 @@ const linking = {
 };
 
 export default function AppNavigator() {
+  const { colors, isDark } = useAppTheme();
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const theme = { ...base, colors: { ...base.colors, primary: colors.primary, background: colors.background, card: colors.surface, text: colors.text, border: colors.border, notification: colors.danger } };
   return (
-    <NavigationContainer linking={linking} documentTitle={{
+    <NavigationContainer theme={theme} linking={linking} documentTitle={{
       formatter: (_options, route) => `${pageTitles[route?.name] || "Seu cuidado, mais perto"} | MEDSCAN`
     }}>
       <Stack.Navigator

@@ -1,9 +1,10 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { useDesktop } from "../utils/responsive";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors, radius, shadows } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 
 const tabs = [
   { route: "Home", label: "Início", icon: "home-outline" },
@@ -13,6 +14,7 @@ const tabs = [
 ];
 
 export default function BottomTab({ navigation, active = "Home" }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const insets = useSafeAreaInsets();
   const desktop = useDesktop();
   if (desktop) return <View style={styles.sidebar}>
@@ -35,7 +37,7 @@ export default function BottomTab({ navigation, active = "Home" }) {
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={tab.label}
-            style={styles.item}
+            style={[styles.item, isActive && { backgroundColor: colors.selectedSurface, borderRadius: 22 }]}
           >
             <MaterialCommunityIcons
               name={tab.icon}
@@ -57,13 +59,13 @@ export default function BottomTab({ navigation, active = "Home" }) {
   );
 }
 
-const styles = StyleSheet.create({
-  sidebar: { position: "fixed", left: 0, top: 0, bottom: 0, width: 240, backgroundColor: colors.white, padding: 22, borderRightWidth: 1, borderColor: colors.border, gap: 8 },
+const createStyles = (colors) => StyleSheet.create({
+  sidebar: { position: "fixed", left: 0, top: 0, bottom: 0, width: 240, backgroundColor: colors.surface, padding: 22, borderRightWidth: 1, borderColor: colors.border, gap: 8 },
   logo: { flexDirection: "row", gap: 9, alignItems: "center", paddingVertical: 16, marginBottom: 32 },
   logoText: { fontFamily, color: colors.primary, fontSize: 19, fontWeight: "700" },
   menuCaption: { fontFamily, fontSize: 9, letterSpacing: 1.2, color: colors.textMuted, marginBottom: 14 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 10, padding: 13, borderRadius: 12 },
-  selectedNav: { backgroundColor: colors.primary },
+  selectedNav: { backgroundColor: colors.hero },
   navLabel: { fontFamily, fontSize: 13, fontWeight: "600", color: colors.text },
   sidebarFoot: { marginTop: "auto", padding: 18, borderRadius: 18, backgroundColor: colors.background, gap: 10 },
   footText: { fontFamily, fontSize: 14, lineHeight: 21, color: colors.primary },
@@ -75,14 +77,14 @@ const styles = StyleSheet.create({
     bottom: 14,
     minHeight: 70,
     borderRadius: radius.xl,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "#EDF4F2",
+    borderColor: colors.border,
     ...shadows.card
   },
   item: {

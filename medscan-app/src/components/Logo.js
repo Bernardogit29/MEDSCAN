@@ -1,9 +1,11 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function Logo({ compact = false }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={[styles.wrapper, compact && styles.compact]}>
       <View style={styles.mark}>
@@ -16,7 +18,7 @@ export default function Logo({ compact = false }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   wrapper: {
     alignItems: "center",
     gap: 12
@@ -31,7 +33,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.primary
+    backgroundColor: colors.hero
   },
   logo: {
     fontFamily, fontSize: 48,

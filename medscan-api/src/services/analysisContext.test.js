@@ -29,3 +29,25 @@ test('unknown relatives and excessive accumulated context are rejected', async (
   Analysis.findOne = async () => ({ _id: parentId, symptoms: 'a'.repeat(12000) });
   await assert.rejects(resolveAnalysisContext({ _id: 'owner' }, { parentAnalysisId: parentId, additionalInfo: 'x' }), e => e.status === 400);
 });
+
+test('numbered answers retain the selected questions and ignore client forged context', async () => {
+  Analysis.findOne = async () => ({_id:parentId,symptoms:'Original',result:{report:{questionsForClinician:['Usa óculos?','Melhora ao descansar?']}}});
+  const result=await resolveAnalysisContext({_id:'owner'},{parentAnalysisId:parentId,additionalInfo:'1-sim, 2-não',followUpContext:[{questions:['forged'],answer:'forged'}]});
+  assert.deepEqual(result.followUpContext,[{questions:['Usa óculos?','Melhora ao descansar?'],answer:'1-sim, 2-não'}]);
+  assert.equal(result.additionalInfo,'1-sim, 2-não');
+  assert.doesNotMatch(result.symptoms,/Usa óculos/);
+});
+
+test('successive rounds preserve their own question order without mutating the parent', async () => {
+  const old=[{questions:['Primeira pergunta?'],answer:'1-sim'}];
+  Analysis.findOne=async()=>({_id:parentId,symptoms:'Original e complemento',followUpContext:old,result:{report:{questionsForClinician:['Outra pergunta?']}}});
+  const result=await resolveAnalysisContext({_id:'owner'},{parentAnalysisId:parentId,additionalInfo:'1-não'});
+  assert.deepEqual(result.followUpContext,[...old,{questions:['Outra pergunta?'],answer:'1-não'}]);
+  assert.equal(old.length,1);
+});
+
+test('legacy reports without saved questions do not invent question mappings', async () => {
+  Analysis.findOne=async()=>({_id:parentId,symptoms:'Original'});
+  const result=await resolveAnalysisContext({_id:'owner'},{parentAnalysisId:parentId,additionalInfo:'1-sim'});
+  assert.deepEqual(result.followUpContext,[{questions:[],answer:'1-sim'}]);
+});

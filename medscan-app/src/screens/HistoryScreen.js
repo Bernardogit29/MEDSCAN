@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import { groupAnalyses } from "../utils/analysisGroups";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React, { useCallback, useState } from "react";
@@ -10,7 +11,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { colors, fontFamily } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 import { getMonitoredPeople, MONITORED_PERSON_STORAGE_KEY } from "../utils/monitoredPeople";
 import { setStoredItem } from "../utils/storage";
 
@@ -19,6 +20,7 @@ function dateTime(value) {
   return Number.isFinite(date.getTime()) ? date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Horário não informado";
 }
 function Row({ icon, title, subtitle, onPress, expanded }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded }} onPress={onPress} style={styles.row}>
     <View style={styles.icon}><MaterialCommunityIcons name={icon} size={23} color={colors.primary} /></View>
     <View style={styles.copy}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.muted}>{subtitle}</Text></View>
@@ -27,6 +29,7 @@ function Row({ icon, title, subtitle, onPress, expanded }) {
 }
 
 export default function HistoryScreen({ navigation }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user, token } = useAuth();
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
@@ -138,19 +141,19 @@ export default function HistoryScreen({ navigation }) {
     <Modal visible={modal} animationType="slide" onRequestClose={() => !saving && setModal(false)}><SafeAreaView style={styles.safe}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}><Text style={styles.title}>Registrar medição</Text><Text style={styles.muted}>{selectedPerson?.name} · o registro usará a data e o horário do envio.</Text><Input label="Frequência cardíaca (bpm)" value={heartRate} onChangeText={setHeartRate} keyboardType="decimal-pad" placeholder="Valor medido" /><Input label="Glicose (mg/dL)" value={glucose} onChangeText={setGlucose} keyboardType="decimal-pad" placeholder="Valor medido" /><Input label="Observação (opcional)" value={note} onChangeText={setNote} multiline placeholder="Ex.: após caminhar, em repouso ou após refeição" />{saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}<Button title="Salvar medição" loading={saving} onPress={saveMeasurement} /><Button title="Cancelar" variant="outline" disabled={saving} onPress={() => setModal(false)} /></ScrollView></SafeAreaView></Modal>
   </SafeAreaView>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 20, paddingBottom: 120, gap: 16 },
   heading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
   title: { fontFamily, fontSize: 24, fontWeight: "700", color: colors.primary },
   people: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 10 },
-  person: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 28, paddingVertical: 11, paddingHorizontal: 15, backgroundColor: colors.white },
-  personActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  person: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 28, paddingVertical: 11, paddingHorizontal: 15, backgroundColor: colors.surface },
+  personActive: { backgroundColor: colors.hero, borderColor: colors.primary },
   personName: { fontFamily, fontSize: 14, fontWeight: "600", color: colors.primary },
   personMeta: { fontFamily, fontSize: 11, color: colors.textMuted, marginTop: 2 },
   white: { color: colors.white }, add: { borderStyle: "dashed", borderColor: colors.primary },
   section: { fontFamily, fontSize: 11, letterSpacing: 1.4, color: colors.textMuted, marginTop: 9 },
-  group: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22, overflow: "hidden" },
+  group: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 22, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, minHeight: 78 },
   icon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
   copy: { flex: 1 }, rowTitle: { fontFamily, fontSize: 15, fontWeight: "600", color: colors.text },

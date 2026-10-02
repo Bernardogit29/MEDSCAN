@@ -1,7 +1,8 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, colors } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function Header({
   title,
@@ -12,6 +13,7 @@ export default function Header({
   showSettings = false,
   right
 }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={styles.header}>
       <View style={styles.titleSide}>
@@ -42,7 +44,7 @@ export default function Header({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

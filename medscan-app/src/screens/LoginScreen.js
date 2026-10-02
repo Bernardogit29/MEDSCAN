@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React, { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -6,9 +7,10 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import AuthLayout from "../components/AuthLayout";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, colors } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function LoginScreen({ navigation, route }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const { login, loading } = useAuth();
   const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -70,7 +72,7 @@ export default function LoginScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

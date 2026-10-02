@@ -1,3 +1,4 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React, { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,9 +8,10 @@ import Input from "../components/Input";
 import AuthLayout from "../components/AuthLayout";
 import { validateRegistration } from "../utils/authValidation";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, colors } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function RegisterScreen({ navigation }) {
+  const { colors, styles } = useAppTheme(createStyles);
   const { register, loading } = useAuth();
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -82,7 +84,7 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

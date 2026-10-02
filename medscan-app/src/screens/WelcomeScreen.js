@@ -1,11 +1,13 @@
+import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../components/Button";
-import { colors, fontFamily } from "../constants/theme";
+import { fontFamily } from "../constants/theme";
 
 export default function WelcomeScreen({ navigation }) {
+  const { colors, styles } = useAppTheme(createStyles);
   return <AuthLayout title="Seu cuidado, mais perto." subtitle="Entenda seus sintomas e acompanhe sua saúde." navigation={navigation}>
     <Text style={styles.title}>Bem-vindo ao MEDSCAN</Text>
     {[
@@ -17,7 +19,7 @@ export default function WelcomeScreen({ navigation }) {
     <Button title="Criar conta" variant="outline" onPress={() => navigation.navigate("Register")} />
   </AuthLayout>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   title: { fontFamily, fontSize: 21, color: colors.text, fontWeight: "700" },
   row: { flexDirection: "row", gap: 12, alignItems: "center" },
   icon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.primaryLight, alignItems: "center", justifyContent: "center" },
