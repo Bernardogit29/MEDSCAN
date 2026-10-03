@@ -41,6 +41,7 @@ app.use("/api/ai", requireDb, aiRoutes);
 app.use("/api/history", requireDb, historyRoutes);
 app.use("/api", requireDb, monitoringRoutes);
 app.use("/api/profile", requireDb, profileRoutes);
+app.use("/api/care", requireDb, require("./src/routes/careRoutes"));
 
 app.use(errorHandler);
 

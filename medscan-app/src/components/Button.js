@@ -89,6 +89,8 @@ const createStyles = (colors) => StyleSheet.create({
     opacity: 0.65
   },
   text: {
+    flexShrink: 1,
+    textAlign: "center",
     fontFamily, fontSize: 17,
     fontWeight: "800",
     letterSpacing: 0

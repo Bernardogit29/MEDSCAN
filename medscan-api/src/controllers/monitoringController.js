@@ -56,7 +56,7 @@ async function createMonitoring(req, res, next) {
     if (!Object.keys(values).length) return res.status(400).json({ message: "Informe a frequência cardíaca ou a glicose." });
     const measuredAt = req.body.measuredAt ? new Date(req.body.measuredAt) : new Date();
     if (!Number.isFinite(measuredAt.getTime()) || measuredAt.getTime() > Date.now() + 60000) return res.status(400).json({ message: "Informe uma data válida, sem horário futuro." });
-    const monitoring = await Monitoring.create({ userId: req.user._id, monitoredPersonId: personId, source: "recorded", measuredAt, ...values, note: String(req.body.note || "").slice(0,500) });
+    const monitoring = await Monitoring.create({ userId: req.user._id, monitoredPersonId: personId, source: "recorded", origin: "manual", measuredAt, ...values, note: String(req.body.note || "").slice(0,500) });
     return res.status(201).json(monitoring);
   } catch (error) { next(error); }
 }

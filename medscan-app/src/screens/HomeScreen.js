@@ -1,6 +1,7 @@
 import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import React from "react";
+import { useIsFocused } from "@react-navigation/native";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -22,6 +23,7 @@ const metrics = [
 export default function HomeScreen({ navigation }) {
   const { colors, styles, isDark } = useAppTheme(createStyles);
   const desktop = useDesktop();
+  const focused = useIsFocused();
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "bem-vindo";
   const date = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
@@ -36,6 +38,10 @@ export default function HomeScreen({ navigation }) {
         </LinearGradient>
 
         <View style={styles.body}>
+          <Text style={styles.sectionTitle}>Meu cuidado</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {[["medication", "pill", "Medicamentos"], ["appointment", "calendar-clock", "Consultas"], ["exams", "flask-outline", "Exames"]].map(([section, icon, title]) => <TouchableOpacity key={section} accessibilityRole="button" accessibilityLabel={title} onPress={() => section === "exams" ? navigation.navigate("History", { section: "exams", personId: "self", revision: Date.now() }) : navigation.navigate("Care", { section, personId: "self", revision: Date.now() })} style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18 }}><MaterialCommunityIcons name={icon} size={25} color={colors.primary}/><Text style={{ color: colors.text, fontFamily, fontSize: 11, fontWeight: "600" }}>{title}</Text></TouchableOpacity>)}
+          </View>
           <View style={styles.sectionRow}><Text style={styles.sectionTitle}>Visão geral</Text><Text style={styles.link}>Hoje, {date}</Text></View>
           <View style={desktop && styles.dashboardRow}>
           <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("History")} activeOpacity={0.9} style={[styles.recordCard, desktop && { flex: 1 }]}>
@@ -61,7 +67,7 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${metric.title}: ${metric.value} ${metric.unit}, demonstração. Abrir monitoramento`} key={metric.title} style={[styles.metric, desktop && { width: "23%" }]} onPress={() => navigation.navigate("Monitoring")}>
                 <View style={styles.metricHeader}><View style={[styles.metricIcon,{backgroundColor:`${accent}18`}]}><MaterialCommunityIcons name={metric.icon} size={20} color={accent} /></View><Text style={styles.metricLabel}>{metric.title}</Text></View>
                 <View style={styles.metricReading}><Text style={styles.metricValue}>{metric.value}</Text></View>
-                <VitalSparkline color={accent} bars={metric.bars} pulse={metric.pulse}/>
+                <VitalSparkline active={focused} color={accent} bars={metric.bars} pulse={metric.pulse}/>
                 <Text style={styles.metricUnit}>{metric.unit} · demonstração</Text>
               </TouchableOpacity>
             );})}

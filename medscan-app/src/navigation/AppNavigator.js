@@ -14,8 +14,14 @@ import MonitoringScreen from "../screens/MonitoringScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 
+import ConsultationSummaryScreen from "../screens/ConsultationSummaryScreen";
+
+import CareScreen from "../screens/CareScreen";
+
 const Stack = createNativeStackNavigator();
 const pageTitles = {
+  Care: "Cuidados e agenda",
+  ConsultationSummary: "Resumo para consulta",
   Welcome: "Bem-vindo",
   Login: "Entrar",
   Register: "Criar conta",
@@ -33,6 +39,8 @@ const linking = {
   prefixes: [],
   config: {
     screens: {
+      Care: "cuidados",
+      ConsultationSummary: "resumo-consulta",
       Welcome: "",
       Login: "login",
       Register: "cadastro",
@@ -67,6 +75,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Analyze" component={AnalyzeScreen} />
+        <Stack.Screen name="Care" component={CareScreen} />
+        <Stack.Screen name="ConsultationSummary" component={ConsultationSummaryScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Monitoring" component={MonitoringScreen} />

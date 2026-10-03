@@ -193,3 +193,37 @@ As telas antigas de monitoramento ainda possuem dados de demonstração; não co
 - Ícone de adicionar exame azul; temas claro/escuro preservados.
 - Dependências compatíveis com SDK instalado: react-native-svg 15.15.4 e expo-linear-gradient ~57.0.2.
 - Prévia verificada em 390x844 nos dois temas, incluindo área inferior e atalhos. Capturas em output/home. Sem publicação no Render.
+
+### 02/10/2026 — Animação dos gráficos demonstrativos
+- Curvas contínuas e pulso deslizando; barras variam suavemente, sem alterar números ou gerar registros/alertas.
+- requestAnimationFrame limitado a 25 atualizações/s por mini gráfico; cancela na desmontagem, tela sem foco, app em segundo plano e aba oculta. Respeita reduzir movimento via AccessibilityInfo.
+- Confirmada no navegador alteração real de caminhos SVG e alturas de barras entre quadros. Export web validado. Não testado em aparelho físico nesta etapa. Sem publicação no Render.
+
+### 02/10/2026 — Resumo para consulta e rascunhos (itens 2 e 4)
+- Nova tela acessível pelo botão “Resumo para levar à consulta” no resultado. Busca novamente os registros autenticados, reúne apenas versões explicitamente vinculadas à mesma pessoa/caso e separa relatos, medições registradas e interpretações da IA.
+- Inclui datas, duração quando informada no texto, complementos e perguntas respondidas. Exclui medições demonstrativas/legadas e de outra pessoa. Falha de carregamento bloqueia exportação, sem tratar dados indisponíveis como ausência de medições.
+- HTML de impressão com escape de conteúdo e formato A4; navegador abre impressão/salvar PDF. No celular, expo-print + expo-sharing geram PDF e abrem compartilhamento/salvamento. Arquivo temporário removido após compartilhar.
+- Rascunho da análise por conta/pessoa e do complemento por conta/registro. Web usa IndexedDB com imagem durável em data URI; nativo usa arquivo local e cópia do anexo em documentDirectory. Fila serializa gravações e limpeza entre montagens. Avisos de salvamento/recuperação/falha e descarte explícito.
+- Preserva sintomas, duração, intensidade, contexto e anexo; formulário visitante continua após login, mas somente contas autenticadas persistem entre recargas. Troca de conta não transfere rascunhos de outra conta. Dados locais, sem sincronização entre dispositivos.
+- Mantém campos após erro, mostra envio em andamento e botão de nova tentativa. Reabertura após pedido interrompido orienta conferir o prontuário para evitar duplicação. Limpa rascunho somente após resposta que confirma registro. Cancela espera local na desmontagem/troca de conta; isso não garante cancelamento no servidor.
+- Validação: 16 testes passaram (8 novos + linha do tempo + proteção de parâmetros de navegação). Compilação web e Android/Hermes passou; conferida ausência da API fictícia na compilação normal. Pequena guarda final de confirmação de _id também validada com Babel.
+- Navegador com API fictícia local isolada: texto/campos/imagem restaurados após reload, falha 503 preserva dados, nova tentativa funciona, complemento recuperado após reabrir prontuário, resumo inclui as versões e medições corretas. HTML usado na impressão conferido no navegador. Não houve chamadas clínicas reais nem gravação no banco de produção.
+- PDF/impressão nativa ainda não testados em aparelho físico; o arquivo PDF final não foi inspecionado nesta etapa. Captura da tela em output/consultation/resumo-consulta.png. Sem publicação no Render.
+
+### 03/10/2026 — Retomada e conclusão dos itens 2 e 4
+- Confirmados todos os arquivos da implementação após interrupção por créditos.
+- Acrescentados quatro testes da exportação: conteúdo escrito antes da impressão, erro de popup bloqueado, geração/compartilhamento/limpeza do PDF nativo e alternativa de impressão quando compartilhamento indisponível.
+- Resultado final: 20 testes passaram; exportação web e Android/Hermes concluída com a última guarda que preserva o rascunho se a resposta não confirmar um registro. git diff --check sem erros.
+- Recursos prontos no código local. Mantida limitação de verificação: PDF final e compartilhamento em aparelho físico ainda não conferidos. Sem alteração no Render.
+
+
+## 03/10/2026 — Prontuário, agenda e Contagem
+- Nova tela Cuidados acessível no prontuário: linha do tempo unificada, medicamentos, alergias, vacinação, consultas e gráfico.
+- API /api/care autenticada, com registros e tomadas persistidos em MongoDB e isolados por conta/pessoa. Edição, arquivamento e restauração; validação de datas, horários e categorias; tomada idempotente por horário.
+- Agenda diária de medicamentos com horários/doses manuais e registro da tomada. Não envia alarmes ou notificações do sistema.
+- Carteira pessoal de vacinação, próximas datas informadas e links oficiais. Contagem/MG padrão; fontes: https://portal.contagem.mg.gov.br/imunizacao e https://portal.contagem.mg.gov.br/fomularios-sala-de-vacinacao (documento de dias de aplicação de 26/08/2026). Não há sincronização SUS, estoque em tempo real ou importação automática de campanhas. Confirmar programação no posto.
+- Gráfico de frequência/glicose por período, seleção de pontos com data, horário, valor e origem; exemplo simulado separado. Registro manual via prontuário. Origem sensor suportada no modelo, sem integração de dispositivo real.
+- Atalhos no início para medicamentos, consultas e exames. Mantidos os temas existentes.
+- Validação: 12 testes backend + 16 frontend aprovados; exportação Android/web aprovada em .expo/care-final usando ambiente normal e cache limpo. Não testado em aparelho físico.
+- Navegador: testes com servidor isolado e dados fictícios (sem MongoDB real): cadastro das quatro categorias, tomada, isolamento de familiar, arquivar/restaurar, linha do tempo, gráfico/ponto/simulação e registro manual refletido no gráfico. Prévia em output/care/grafico.png.
+- Render não foi alterado. Os dados fictícios da verificação existem apenas na memória do servidor de teste.

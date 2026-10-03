@@ -1,7 +1,7 @@
 import { useAppTheme } from "../context/ThemeContext";
 import { groupAnalyses } from "../utils/analysisGroups";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -28,12 +28,12 @@ function Row({ icon, title, subtitle, onPress, expanded }) {
   </TouchableOpacity>;
 }
 
-export default function HistoryScreen({ navigation }) {
+export default function HistoryScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user, token } = useAuth();
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
-  const [personId, setPersonId] = useState("self");
+  const [personId, setPersonId] = useState(route.params?.personId || "self");
   const [history, setHistory] = useState([]);
   const [preferences, setPreferences] = useState({ hideHealthPreviews: true });
   const [monitoring, setMonitoring] = useState({ records: [], events: [] });
@@ -48,6 +48,11 @@ export default function HistoryScreen({ navigation }) {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  useEffect(() => {
+    if (route.params?.personId) setPersonId(route.params.personId);
+    if (route.params?.section) setExpanded(route.params.section);
+    if (route.params?.openMeasurement) { setSaveError(""); setModal(true); }
+  }, [route.params?.personId, route.params?.section, route.params?.openMeasurement, route.params?.revision]);
   const selectedPerson = people.find(person => person.id === personId);
 
   useFocusEffect(useCallback(() => {
@@ -116,6 +121,11 @@ export default function HistoryScreen({ navigation }) {
       </View>
       {!token ? <View style={styles.group}><Text style={styles.notice}>Entre na sua conta para consultar seu prontuário.</Text><Button title="Entrar" onPress={() => navigation.navigate("Login", { returnToPrevious: true })} /></View> : null}
       {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      <View style={styles.group}><Row icon="timeline-clock-outline" title="Linha do tempo completa" subtitle="Relatos, medições, doses, vacinas e consultas" onPress={() => navigation.navigate("Care", { section: "timeline", personId, revision: Date.now() })} /></View>
+      <Text style={styles.section}>SAÚDE E AGENDA</Text>
+      <View style={styles.group}>
+        {[ ["medication", "pill", "Medicamentos", "Agenda diária, horários e tomadas"], ["allergy", "shield-alert-outline", "Alergias", "Substâncias e reações registradas"], ["vaccine", "needle", "Vacinação", "Minha carteira, próximas doses e postos"], ["appointment", "calendar-clock", "Consultas marcadas", "Datas, horários e locais"] ].map(([section,icon,title,subtitle]) => <Row key={section} icon={icon} title={title} subtitle={subtitle} onPress={() => navigation.navigate("Care", { section, personId, revision: Date.now() })} />)}
+      </View>
       <Text style={styles.section}>HISTÓRICO DE SAÚDE</Text>
       <View style={styles.group}>
         <Row icon="account-heart-outline" title="Informações pessoais" subtitle="Pessoa acompanhada e dados do perfil" expanded={expanded === "personal"} onPress={() => toggle("personal")} />
@@ -126,6 +136,7 @@ export default function HistoryScreen({ navigation }) {
         {expanded === "exams" ? analysisList("exams") : null}
       </View>
       <Text style={styles.section}>MONITORAMENTO</Text>
+      <View style={styles.group}><Row icon="chart-line" title="Gráfico de medições" subtitle="Valores ao longo do tempo, horário e origem" onPress={() => navigation.navigate("Care", { section: "chart", personId, revision: Date.now() })} /></View>
       <View style={styles.group}>
         <Row icon="chart-timeline-variant" title="Variações registradas" subtitle="O que mudou e em qual horário" expanded={expanded === "events"} onPress={() => toggle("events")} />
         {expanded === "events" ? <View style={styles.expanded}>

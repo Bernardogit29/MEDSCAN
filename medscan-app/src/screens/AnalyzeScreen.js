@@ -1,6 +1,6 @@
 import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Alert,
   Image,
@@ -32,24 +32,32 @@ import {
 } from "../utils/monitoredPeople";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
+import useAnalysisDraft from "../utils/useAnalysisDraft";
+import { durableAttachment, releaseAttachment } from "../utils/draftStorage";
+
 export default function AnalyzeScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user, token, bootstrapping } = useAuth();
   const [sessionExpired, setSessionExpired] = useState(false);
   const needsLogin = !bootstrapping && (!user || !token || sessionExpired);
-  const [symptoms, setSymptoms] = useState(route.params?.initialSymptoms || "");
-  const [selectedType, setSelectedType] = useState(route.params?.type || "symptoms");
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [attachmentType, setAttachmentType] = useState("image");
   const [loading, setLoading] = useState(false);
-  const [duration, setDuration] = useState("");
-  const [intensity, setIntensity] = useState("");
-  const [context, setContext] = useState("");
+  const requestRef = useRef(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [personId, setPersonId] = useState(route.params?.monitoredPersonId || DEFAULT_MONITORED_PERSON_ID);
   const [peopleReady, setPeopleReady] = useState(false);
+  const owner = user?._id || user?.id;
+  const draft = useAnalysisDraft(owner ? `analysis:${owner}:${personId}` : null, {
+    symptoms: route.params?.initialSymptoms || "", selectedType: route.params?.type || "symptoms",
+    selectedImage: null, attachmentType: "image", duration: "", intensity: "", context: "", status: "editing"
+  });
+  const { symptoms, selectedType, selectedImage, attachmentType, duration, intensity, context } = draft.value;
+  const change = field => value => { if (!loading) draft.update({ [field]: value, status: "editing" }); };
+  const setSymptoms = change("symptoms"), setSelectedType = change("selectedType");
+  const setDuration = change("duration"), setIntensity = change("intensity"), setContext = change("context");
+  useEffect(() => () => requestRef.current?.abort(), [owner]);
+
   useEffect(() => {
     let mounted = true;
     setPeopleReady(false);
@@ -78,22 +86,13 @@ export default function AnalyzeScreen({ navigation, route }) {
     loadPeople();
     return () => { mounted = false; };
   }, [user, token, bootstrapping, route.params?.monitoredPersonId, route.params?.revision]);
-  useEffect(() => {
-    setSymptoms(route.params?.initialSymptoms || "");
-    setSelectedType(route.params?.type || "symptoms");
-    setSelectedImage(null);
-    setDuration("");
-    setIntensity("");
-    setContext("");
-    setErrorMessage("");
-  }, [route.params?.revision, route.params?.initialSymptoms, route.params?.type]);
-
   async function pickImage(type) {
+    if (loading || !draft.ready) return;
     setSelectedType(type);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert("Permissao necessaria", "Autorize o acesso a galeria para enviar imagens ou exames.");
+      Alert.alert("Permissão necessária", "Autorize o acesso à galeria para enviar imagens ou exames.");
       return;
     }
 
@@ -104,8 +103,11 @@ export default function AnalyzeScreen({ navigation, route }) {
     });
 
     if (!result.canceled && result.assets?.length) {
-      setSelectedImage(result.assets[0]);
-      setAttachmentType(type);
+      try {
+        const asset = await durableAttachment(result.assets[0]);
+        const saved = await draft.update({ selectedImage: asset, attachmentType: type, selectedType: type });
+        if (saved) await releaseAttachment(selectedImage);
+      } catch { setErrorMessage("Não foi possível guardar o anexo. Selecione-o novamente."); }
     }
   }
 
@@ -132,10 +134,13 @@ export default function AnalyzeScreen({ navigation, route }) {
       setErrorMessage("Descreva os sintomas ou selecione uma imagem para análise.");
       return;
     }
-    if (!peopleReady || loading) return;
+    if (!peopleReady || !draft.ready || loading || requestRef.current) return;
 
     setErrorMessage("");
     setLoading(true);
+    const controller = new AbortController();
+    requestRef.current = controller;
+    await draft.update({ status: "submitting" });
 
     try {
       const formData = new FormData();
@@ -155,14 +160,20 @@ export default function AnalyzeScreen({ navigation, route }) {
         headers: {
           "Content-Type": "multipart/form-data"
         },
+        signal: controller.signal,
         timeout: 150000
       });
 
-      navigation.navigate("Result", {
+      if (!data.analysis?._id) throw new Error("A resposta recebida não confirmou o registro da análise.");
+      const cleared = await draft.clear();
+      if (cleared) await releaseAttachment(selectedImage).catch(() => {});
+      if (navigation.isFocused()) navigation.navigate("Result", {
         analysis: data.analysis,
-        imageUri: selectedImage?.uri
+        imageUri: null
       });
     } catch (error) {
+      await draft.update({ status: "interrupted" });
+      if (error.code === "ERR_CANCELED") return;
       if (error.response?.status === 401 || error.response?.status === 403) {
         setSessionExpired(true);
         setPeopleReady(false);
@@ -176,6 +187,7 @@ export default function AnalyzeScreen({ navigation, route }) {
 
       setErrorMessage(message);
     } finally {
+      requestRef.current = null;
       setLoading(false);
     }
   }
@@ -192,6 +204,10 @@ export default function AnalyzeScreen({ navigation, route }) {
             onNotifications={() => navigation.navigate("Notifications")}
           />
           <View style={styles.body}>
+          <Text style={styles.previewText} accessibilityLiveRegion="polite">{!draft.ready ? "Recuperando rascunho…" : draft.notice || (owner ? "Seu rascunho fica neste dispositivo, separado por pessoa e conta." : "Entre para salvar o rascunho. Sem login, o texto permanece apenas nesta tela.")}</Text>
+          {draft.value.status === "interrupted" ? <Text style={styles.previewText}>A tentativa anterior não foi confirmada. Confira o prontuário antes de enviar novamente para evitar duplicar o relato. Seus campos e anexo foram mantidos.</Text> : null}
+          {draft.ready && !loading && (symptoms || selectedImage || duration || context || intensity) ? <Button title="Descartar rascunho" variant="outline" onPress={async () => { if (await draft.clear()) await releaseAttachment(selectedImage).catch(() => {}); }} /> : null}
+          <View pointerEvents={loading || !draft.ready ? "none" : "auto"} style={{ gap: 17 }}>
           <Text style={styles.fieldLabel}>Para quem é esta orientação?</Text>
           <View style={styles.intensityRow}>
             {people.map(person => <TouchableOpacity key={person.id} accessibilityRole="button" accessibilityState={{ selected: person.id === personId }} disabled={loading || Boolean(route.params?.monitoredPersonId)} onPress={() => setPersonId(person.id)} style={[styles.intensityChip, person.id === personId && styles.intensityActive]}><Text style={{ fontFamily, color: person.id === personId ? colors.white : colors.primary }}>{person.name}</Text></TouchableOpacity>)}
@@ -226,22 +242,23 @@ export default function AnalyzeScreen({ navigation, route }) {
                   {selectedImage.fileName || "Imagem pronta para analise"}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.removeButton}>
+              <TouchableOpacity onPress={async () => { if (await draft.update({ selectedImage: null })) await releaseAttachment(selectedImage).catch(() => {}); }} style={styles.removeButton}>
                 <MaterialCommunityIcons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
           ) : null}
 
           <Input
+              editable={!loading && draft.ready}
               label="O que você está sentindo?"
               icon="stethoscope"
               multiline
               value={symptoms}
               onChangeText={setSymptoms}
-              placeholder="Descreva sintomas, duracao, intensidade e qualquer informacao relevante."
+              placeholder="Descreva sintomas, duração, intensidade e qualquer informação relevante."
           />
 
-          <Input label="Há quanto tempo? (opcional)" value={duration} onChangeText={setDuration} placeholder="Ex.: começou ontem, está piorando hoje" />
+          <Input editable={!loading && draft.ready} label="Há quanto tempo? (opcional)" value={duration} onChangeText={setDuration} placeholder="Ex.: começou ontem, está piorando hoje" />
           <Text style={styles.fieldLabel}>Como está a intensidade? (opcional)</Text>
           <View style={styles.intensityRow}>
             {["Leve", "Moderada", "Intensa"].map(value => (
@@ -250,7 +267,8 @@ export default function AnalyzeScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
           </View>
-          <Input label="Algo mais que precisamos saber? (opcional)" multiline value={context} onChangeText={setContext} placeholder="Idade da pessoa, doenças, medicamentos, alergias, gestação ou o que melhora/piora." />
+          <Input editable={!loading && draft.ready} label="Algo mais que precisamos saber? (opcional)" multiline value={context} onChangeText={setContext} placeholder="Idade da pessoa, doenças, medicamentos, alergias, gestação ou o que melhora/piora." />
+          </View>
           {errorMessage ? <Text accessibilityRole="alert" style={styles.error}>{errorMessage}</Text> : null}
           {needsLogin ? (
             <View style={styles.loginNotice}>
@@ -258,7 +276,7 @@ export default function AnalyzeScreen({ navigation, route }) {
               <Text style={styles.loginCopy}>Seu relato continuará aqui depois do login.</Text>
               <Button title="Entrar na minha conta" onPress={() => navigation.navigate("Login", { returnToPrevious: true })} />
             </View>
-          ) : <Button title="Receber orientação" icon="creation" onPress={handleAnalyze} loading={loading || bootstrapping} disabled={!peopleReady} />}
+          ) : <Button title={draft.value.status === "interrupted" ? "Tentar novamente" : "Receber orientação"} icon="creation" onPress={handleAnalyze} loading={loading || bootstrapping} disabled={!peopleReady || !draft.ready} />}
           {loading ? <Text style={styles.previewText}>Estamos preparando sua orientação. Se a IA estiver ocupada, tentaremos novamente automaticamente. Isso pode levar até dois minutos.</Text> : null}
 
           <MedicalNotice title="Importante" />

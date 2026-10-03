@@ -13,6 +13,7 @@ export default function Input({
   secureTextEntry,
   keyboardType,
   multiline = false,
+  editable = true,
   style
 }) {
   const { colors, styles } = useAppTheme(createStyles);
@@ -22,6 +23,7 @@ export default function Input({
       <View style={[styles.inputWrapper, multiline && styles.multilineWrapper]}>
         {icon ? <MaterialCommunityIcons name={icon} size={22} color={colors.primary} /> : null}
         <TextInput
+          editable={editable}
           accessibilityLabel={label || placeholder}
           value={value}
           onChangeText={onChangeText}

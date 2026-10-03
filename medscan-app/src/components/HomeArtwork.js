@@ -1,15 +1,55 @@
-import React, { useId } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useId, useState } from 'react';
+import { AccessibilityInfo, AppState, Platform, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Path, Rect, G, Circle } from 'react-native-svg';
 
-// Decorative examples only: these paths do not represent patient measurements.
-export function VitalSparkline({ color, bars = false, pulse = false }) {
-  const id = `spark${useId().replace(/:/g, '')}`;
-  const path = pulse ? 'M2 35 L20 35 L26 23 L33 44 L42 8 L50 54 L57 30 L65 35 L78 35 L85 23 L92 41 L99 30 L118 30' : 'M2 44 C14 44 17 33 28 35 S44 47 56 29 S73 42 88 19 S105 12 118 8';
+// Local decorative animation; never changes measurements or generates health events.
+function useDemoMotion(active) {
+  const [phase, setPhase] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(true);
+  const [foreground, setForeground] = useState(AppState.currentState !== 'background');
+  const [visible, setVisible] = useState(Platform.OS !== 'web' || !document.hidden);
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then(value => { if (mounted) setReduceMotion(value); }).catch(() => {});
+    const motion = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    const state = AppState.addEventListener('change', value => setForeground(value === 'active'));
+    const onVisibility = () => setVisible(!document.hidden);
+    if (Platform.OS === 'web') document.addEventListener('visibilitychange', onVisibility);
+    return () => { mounted = false; motion.remove(); state.remove(); if (Platform.OS === 'web') document.removeEventListener('visibilitychange', onVisibility); };
+  }, []);
+  useEffect(() => {
+    if (!active || reduceMotion || !foreground || !visible) { setPhase(0); return; }
+    let frame, start, last = 0;
+    const tick = now => {
+      start ??= now;
+      if (now - last >= 40) { setPhase(((now - start) % 4800) / 4800); last = now; }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [active, reduceMotion, foreground, visible]);
+  return phase;
+}
+export function VitalSparkline({ color, bars = false, pulse = false, active = true }) {
+  const phase = useDemoMotion(active);
+  const id = 'spark' + useId().replace(/:/g, '');
+  const points = Array.from({length:61}, (_, i) => {
+    const x = i * 2;
+    const angle = (x / 120 + phase) * Math.PI * 2;
+    const cycle = ((x / 60 + phase * 2) % 1 + 1) % 1;
+    const peak = (center, width) => Math.exp(-Math.pow((cycle-center)/width,2));
+    const y = pulse ? 34 - 8*peak(.23,.045) + 10*peak(.36,.03) - 27*peak(.43,.032) + 17*peak(.50,.036) - 5*peak(.70,.09)
+      : 32 + 11*Math.sin(angle) + 5*Math.sin(angle*3 + .8);
+    return [x,y];
+  });
+  const path = points.map(([x,y],i) => (i ? 'L' : 'M') + x + ' ' + y.toFixed(2)).join(' ');
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
     <Svg width="100%" height={50} viewBox="0 0 120 62">
       <Defs><LinearGradient id={id} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={color} stopOpacity=".28"/><Stop offset="1" stopColor={color} stopOpacity="0"/></LinearGradient></Defs>
-      {bars ? [18,29,36,51,40,56,46].map((h,i)=><Rect key={i} x={9+i*15} y={60-h} width="9" height={h} rx="3" fill={color} opacity={.25+i*.09}/>) : <><Path d={`${path} L118 62 L2 62 Z`} fill={`url(#${id})`}/><Path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></>}
+      {bars ? [18,29,36,45,40,48,38].map((base,i)=>{
+        const h=base + 7*Math.sin(phase*Math.PI*2+i*.8);
+        return <Rect key={i} x={9+i*15} y={60-h} width="9" height={h} rx="3" fill={color} opacity={.25+i*.09}/>;
+      }) : <><Path d={path + ' L120 62 L0 62 Z'} fill={'url(#'+id+')'}/><Path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></>}
     </Svg>
   </View>;
 }

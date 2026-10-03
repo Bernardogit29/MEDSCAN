@@ -8,6 +8,7 @@ const monitoringSchema = new mongoose.Schema({
   },
   monitoredPersonId: { type: String, default: "self" },
   source: { type: String, enum: ["legacy", "recorded"], default: "legacy" },
+  origin: { type: String, enum: ["manual", "sensor", "simulation"] },
   measuredAt: { type: Date, default: Date.now },
   note: { type: String, default: "", maxlength: 500 },
   heartRate: {

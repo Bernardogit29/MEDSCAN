@@ -16,6 +16,9 @@ import Input from "../components/Input";
 import api, { API_ORIGIN } from "../api/client";
 import { fontFamily } from "../constants/theme";
 
+import { useAuth } from "../context/AuthContext";
+import useAnalysisDraft from "../utils/useAnalysisDraft";
+
 function Section({ title, icon, text, items, alert }) {
   const { colors, styles } = useAppTheme(createStyles);
   if (!text && !items?.length) return null;
@@ -41,7 +44,13 @@ export default function ResultScreen({ navigation, route }) {
   const desktop = useDesktop();
   const scrollRef = useRef(null);
   const analysis = route.params?.analysis;
-  const [addition, setAddition] = useState("");
+  const { user } = useAuth();
+  const owner = user?._id || user?.id;
+  const draft = useAnalysisDraft(owner && analysis?._id ? `complement:${owner}:${analysis._id}` : null, { addition: "", status: "editing" });
+  const addition = draft.value.addition;
+  const setAddition = value => { if (!saving) draft.update({ addition: value, status: "editing" }); };
+  const requestRef = useRef(null);
+  useEffect(() => () => requestRef.current?.abort(), [owner]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [versions, setVersions] = useState([]);
@@ -49,7 +58,7 @@ export default function ResultScreen({ navigation, route }) {
   const [timelineError, setTimelineError] = useState("");
   const [timelineRevision, setTimelineRevision] = useState(0);
   useEffect(() => {
-    setAddition(""); setError("");
+    setError("");
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [analysis?._id]);
   useEffect(() => {
@@ -65,21 +74,24 @@ export default function ResultScreen({ navigation, route }) {
     return () => { active = false; };
   }, [analysis?._id, timelineRevision]);
   async function complement() {
-    if (saving) return;
+    if (saving || !draft.ready || requestRef.current) return;
     if (!addition.trim() || addition.length > 4000) { setError("Escreva a nova informação em até 4.000 caracteres."); return; }
     setSaving(true); setError("");
+    const controller = new AbortController(); requestRef.current = controller;
+    await draft.update({ status: "submitting" });
     try {
       const form = new FormData();
       form.append("parentAnalysisId", analysis._id);
       form.append("additionalInfo", addition.trim());
       form.append("type", "symptoms");
-      const { data } = await api.post("/ai/analyze", form, { timeout: 150000 });
+      const { data } = await api.post("/ai/analyze", form, { timeout: 150000, signal: controller.signal });
       if (!data.analysis?.parentAnalysisId) throw new Error("O serviço precisa ser atualizado para salvar complementos vinculados. Seu texto foi mantido.");
       const updated = getCaseVersions(data.analysis, versions);
+      await draft.clear();
       navigation.setParams({ analysis: data.analysis, caseVersions: updated, imageUri: null });
-      setAddition("");
-    } catch (failure) { setError(failure.response?.data?.message || failure.message || "Não foi possível atualizar. Seu texto foi mantido."); }
-    finally { setSaving(false); }
+
+    } catch (failure) { await draft.update({ status: "interrupted" }); if (failure.code === "ERR_CANCELED") return; setError(failure.response?.data?.message || failure.message || "Não foi possível atualizar. Seu texto foi mantido."); }
+    finally { requestRef.current = null; setSaving(false); }
   }
   if (!analysis) return (
     <SafeAreaView style={[styles.safe, desktop && desktopPage]}><View style={styles.empty}>
@@ -112,6 +124,7 @@ export default function ResultScreen({ navigation, route }) {
           <Text style={styles.limit}>Orientação informativa, sem confirmação de diagnóstico.</Text>
           <Text style={styles.limit}>{timelineDate(analysis.createdAt)}{versions.length > 1 ? ` · ${String(versions.at(-1)?._id) === String(analysis._id) ? "Registro mais recente" : "Registro anterior"}` : ""}</Text>
         </View>
+        <Button title="Resumo para levar à consulta" icon="file-document-outline" variant="outline" onPress={() => navigation.navigate("ConsultationSummary", { analysisId: analysis._id, personId: analysis.monitoredPersonId || "self" })} />
         <CaseTimeline key={String(analysis._id)} versions={versions} selectedId={analysis._id} loading={timelineLoading} error={timelineError} onRetry={() => setTimelineRevision(value => value + 1)} disabled={saving} onSelect={version => navigation.setParams({ analysis: version, caseVersions: versions, imageUri: null })} />
         {analysis.symptoms ? <Section title="O que você contou" icon="message-text-outline" text={analysis.symptoms} /> : null}
         {imageUri ? <Image accessibilityLabel="Imagem enviada para análise" source={{ uri: imageUri }} style={styles.image} resizeMode="contain" /> : null}
@@ -129,9 +142,12 @@ export default function ResultScreen({ navigation, route }) {
           <Text style={styles.hint}>Responda às perguntas ou conte o que mudou. A nova orientação ficará junto desta no prontuário, sem apagar a anterior. Imagens anteriores não são reavaliadas neste complemento de texto.</Text>
           {versions.length > 1 && String(versions.at(-1)?._id) !== String(analysis._id) ? <Text style={styles.hint}>Você está vendo um registro anterior. Este complemento usará o relato daquela versão como base.</Text> : null}
           {questions.length ? <Text style={styles.hint}>Para responder às perguntas acima, use os números: 1 — sua resposta; 2 — sua resposta. Elas serão enviadas junto com o complemento.</Text> : null}
-          <Input label="O que você quer acrescentar?" value={addition} onChangeText={setAddition} multiline placeholder={questions.length ? "1 — Minha resposta…\n2 — Minha resposta…" : "Ex.: começou ontem à noite e piora quando caminho…"} />
+          <Text style={styles.hint} accessibilityLiveRegion="polite">{!draft.ready ? "Recuperando rascunho…" : draft.notice || "O complemento será salvo como rascunho neste dispositivo."}</Text>
+          {draft.value.status === "interrupted" ? <Text style={styles.hint}>Tentativa anterior não confirmada. Confira o prontuário antes de enviar novamente. Seu texto foi mantido.</Text> : null}
+          <Input editable={!saving && draft.ready} label="O que você quer acrescentar?" value={addition} onChangeText={setAddition} multiline placeholder={questions.length ? "1 — Minha resposta…\n2 — Minha resposta…" : "Ex.: começou ontem à noite e piora quando caminho…"} />
+          {!!addition && !saving ? <Button title="Descartar complemento" variant="outline" onPress={() => draft.clear()} /> : null}
           {error ? <Text accessibilityRole="alert" style={styles.formError}>{error}</Text> : null}
-          <Button style={desktop ? { alignSelf: "flex-start" } : undefined} title="Atualizar orientação" icon="creation" loading={saving} disabled={!analysis._id} onPress={complement} />
+          <Button style={desktop ? { alignSelf: "flex-start" } : undefined} title="Atualizar orientação" icon="creation" loading={saving} disabled={!analysis._id || !draft.ready} onPress={complement} />
           {saving ? <Text style={styles.hint}>Estamos analisando o complemento. Em caso de instabilidade, tentaremos novamente automaticamente. Aguarde até dois minutos.</Text> : null}
         </Card>
         <Section title="Limites desta orientação" icon="information-outline" text={report.limitations} />
