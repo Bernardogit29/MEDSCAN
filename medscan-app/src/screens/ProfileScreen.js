@@ -7,6 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
+import BrandHero from "../components/BrandHero";
+import { LinearGradient } from "expo-linear-gradient";
+import { RecordArtwork } from "../components/HomeArtwork";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import api from "../api/client";
@@ -97,13 +100,14 @@ export default function ProfileScreen({ navigation, route }) {
   const editable = ["edit", "family", "privacy", "notifications", "preferences"].includes(modal);
   return <SafeAreaView style={[s.safe, desktop && desktopPage]}>
     <ScrollView contentContainerStyle={[s.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
-      <View style={s.heading}><Text style={s.pageTitle}>Meu perfil</Text><View style={s.brand}><Icon name="pulse" size={16} color={colors.primary} /><Text style={s.brandText}>MEDSCAN</Text></View></View>
-      <View style={s.identity}>
+      <BrandHero title="Meu perfil" subtitle="Seu cuidado começa com você." onNotifications={() => navigation.navigate("Notifications")} />
+      <LinearGradient colors={[colors.hero, colors.heroHalo]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.identity, { overflow: "hidden" }]}>
+        <View pointerEvents="none" style={{ position: "absolute", right: -25, bottom: -40, opacity: 0.25 }}><RecordArtwork /></View>
         <View style={s.identityTop}><View style={s.avatar}><Text style={s.initials}>{initials}</Text></View><View style={s.accountBadge}><Text style={s.accountText}>{token ? "SUA CONTA" : "BOAS-VINDAS"}</Text></View></View>
         <Text style={s.name}>{person.name || "Seu espaço de cuidado"}</Text>
         <Text style={s.email}>{person.email || "Entre para organizar seus dados de saúde"}</Text>
         <TouchableOpacity accessibilityRole="button" disabled={Boolean(token) && !data} style={s.editButton} onPress={() => token ? open("edit") : navigation.navigate("Login", { returnToPrevious: true })}><Text style={s.editText}>{token ? "Editar meus dados" : "Entrar na conta"}</Text><Icon name="arrow-top-right" size={18} color={colors.primary} /></TouchableOpacity>
-      </View>
+      </LinearGradient>
       {loading ? <ActivityIndicator color={colors.primary} /> : null}
       {error ? <View style={s.group}><Text style={s.error}>Não foi possível carregar seu perfil.</Text><Button title="Tentar novamente" variant="soft" onPress={() => setRevision(value => value + 1)} /></View> : null}
       {notice ? <Text accessibilityRole="alert" style={s.success}>{notice}</Text> : null}

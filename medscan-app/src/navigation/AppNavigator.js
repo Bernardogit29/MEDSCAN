@@ -70,9 +70,9 @@ export default function AppNavigator() {
           animation: "slide_from_right"
         }}
       >
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ statusBarStyle: "light" }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ statusBarStyle: "light" }} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ statusBarStyle: "light" }} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Analyze" component={AnalyzeScreen} />
         <Stack.Screen name="Care" component={CareScreen} />

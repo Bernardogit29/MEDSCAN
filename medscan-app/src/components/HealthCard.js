@@ -2,19 +2,25 @@ import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, radius, shadows } from "../constants/theme";
+import { fontFamily, shadows } from "../constants/theme";
+import { VitalSparkline } from "./HomeArtwork";
+import { useDesktop } from "../utils/responsive";
 
-export default function HealthCard({ title, value, unit, icon, color, status = "Normal" }) {
+export default function HealthCard({ title, value, unit, icon, color, status = "Normal", pulse = false, bars = false }) {
   const { colors, styles } = useAppTheme(createStyles);
+  const desktop = useDesktop();
   color = color || colors.primary;
   return (
-    <View style={styles.card}>
-      <View style={[styles.iconCircle, { backgroundColor: `${color}16` }]}>
-        <MaterialCommunityIcons name={icon} size={22} color={color} />
+    <View style={[styles.card, desktop && { flexBasis: "22%", minHeight: 220, padding: 20 }]}>
+      <View style={styles.header}>
+        <View style={[styles.iconCircle, { backgroundColor: `${color}18` }]}>
+          <MaterialCommunityIcons name={icon} size={20} color={color} />
+        </View>
+        <Text style={styles.title}>{title}</Text>
       </View>
-      <Text style={styles.title}>{title}</Text>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.unit}>{unit}</Text>
+      {status === "Demonstração" ? <View style={{ width: "100%" }}><VitalSparkline color={color} pulse={pulse} bars={bars} /><Text style={styles.unit}>Ilustração · sem histórico de medições</Text></View> : null}
       <View style={styles.badge}>
         <View style={styles.statusDot} />
         <Text style={styles.badgeText}>{value == null || value === "—" ? "Sem medição" : status}</Text>
@@ -25,10 +31,12 @@ export default function HealthCard({ title, value, unit, icon, color, status = "
 
 const createStyles = (colors) => StyleSheet.create({
   card: {
-    width: "48%",
-    minHeight: 160,
+    flexBasis: "45%",
+    flexGrow: 1,
+    minWidth: 0,
+    minHeight: 184,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 20,
     padding: 14,
     alignItems: "flex-start",
     justifyContent: "space-between",
@@ -36,18 +44,24 @@ const createStyles = (colors) => StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    width: "100%"
+  },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 27,
+    height: 27,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center"
   },
   title: {
-    color: colors.text,
-    fontFamily, fontSize: 13,
-    fontWeight: "800",
-    textAlign: "center"
+    flex: 1,
+    color: colors.textMuted,
+    fontFamily, fontSize: 12,
+    fontWeight: "600"
   },
   value: {
     color: colors.text,
@@ -57,8 +71,8 @@ const createStyles = (colors) => StyleSheet.create({
   },
   unit: {
     color: colors.textMuted,
-    fontFamily, fontSize: 14,
-    fontWeight: "700"
+    fontFamily, fontSize: 10,
+    fontWeight: "600"
   },
   badge: {
     backgroundColor: colors.successLight,

@@ -2,7 +2,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { fontFamily, radius, shadows } from "../constants/theme";
+import { fontFamily, shadows } from "../constants/theme";
 
 function iconForType(type) {
   const map = {
@@ -20,16 +20,18 @@ export default function DeviceCard({ device }) {
   const { colors, styles } = useAppTheme(createStyles);
   return (
     <View style={styles.card}>
-      <View style={styles.iconCircle}>
-        <MaterialCommunityIcons name={iconForType(device.type)} size={34} color={colors.primary} />
+      <View style={styles.header}>
+        <View style={styles.iconCircle}>
+          <MaterialCommunityIcons name={iconForType(device.type)} size={20} color={colors.primary} />
+        </View>
+        <Text style={styles.name} numberOfLines={1}>{device.name}</Text>
       </View>
-      <Text style={styles.name} numberOfLines={1}>{device.name}</Text>
-      <View style={styles.row}>
+      <View style={styles.statusBadge}>
         <View style={[styles.dot, !device.connected && styles.dotOff]} />
-        <Text style={styles.connected}>{device.connected ? "Conectado" : "Offline"}</Text>
+        <Text style={[styles.connected, !device.connected && styles.connectedOff]}>{device.connected ? "Conectado" : "Offline"}</Text>
       </View>
       <View style={styles.row}>
-        <MaterialCommunityIcons name="battery-medium" size={18} color={colors.text} />
+        <MaterialCommunityIcons name="battery-medium" size={18} color={colors.textMuted} />
         <Text style={styles.battery}>{device.battery || 0}%</Text>
       </View>
     </View>
@@ -38,32 +40,50 @@ export default function DeviceCard({ device }) {
 
 const createStyles = (colors) => StyleSheet.create({
   card: {
-    width: "48%",
-    minHeight: 154,
+    flexBasis: "45%",
+    flexGrow: 1,
+    minWidth: 0,
+    minHeight: 150,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 20,
     padding: 14,
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: colors.border,
     ...shadows.card
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "100%"
+  },
   iconCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primaryLight
   },
   name: {
     color: colors.text,
-    fontFamily, fontSize: 15,
-    fontWeight: "900",
+    fontFamily, fontSize: 13,
+    fontWeight: "800",
+    flex: 1,
     maxWidth: "100%"
   },
   row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  statusBadge: {
+    backgroundColor: colors.successLight,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 6
@@ -78,9 +98,12 @@ const createStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.textMuted
   },
   connected: {
-    color: colors.success,
-    fontFamily, fontSize: 13,
-    fontWeight: "800"
+    color: colors.successText,
+    fontFamily, fontSize: 12,
+    fontWeight: "700"
+  },
+  connectedOff: {
+    color: colors.textMuted
   },
   battery: {
     color: colors.textMuted,

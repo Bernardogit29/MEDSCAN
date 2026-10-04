@@ -5,15 +5,15 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import BottomTab from "../components/BottomTab";
-import Button from "../components/Button";
 import Card from "../components/Card";
 import DeviceCard from "../components/DeviceCard";
-import BrandHero from "../components/BrandHero";
 import HealthCard from "../components/HealthCard";
+import { HeaderArtwork } from "../components/HomeArtwork";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { fontFamily, radius } from "../constants/theme";
+import { fontFamily, radius, shadows } from "../constants/theme";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
@@ -25,7 +25,7 @@ import { demoVitals } from "../utils/demoVitals";
 import { getStoredItem, setStoredItem } from "../utils/storage";
 
 export default function MonitoringScreen({ navigation }) {
-  const { colors, styles } = useAppTheme(createStyles);
+  const { colors, styles, isDark } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const { user } = useAuth();
   const [monitoring, setMonitoring] = useState({ vitals: {}, alerts: [] });
@@ -105,11 +105,26 @@ export default function MonitoringScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
       <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]} showsVerticalScrollIndicator={false}>
-        <BrandHero
-          onNotifications={() => navigation.navigate("Notifications")}
-          title="Monitoramento"
-          subtitle="Acompanhe seus sinais vitais"
-        />
+        <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.monitorHero, desktop && {borderRadius:28}]}>
+          <HeaderArtwork dark={isDark} />
+          <View style={styles.brandRow}>
+            <View style={styles.brand}>
+              <LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}>
+                <MaterialCommunityIcons name="pulse" size={23} color="white"/>
+              </LinearGradient>
+              <Text style={styles.brandName}>MEDSCAN</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={() => navigation.navigate("Notifications")} style={styles.bell}>
+              <MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.heroTitle}>Monitoramento</Text>
+          <Text style={styles.heroSubtitle}>Acompanhe sinais vitais, alertas e dispositivos em um só lugar</Text>
+          <View style={styles.heroBadge}>
+            <View style={styles.heroDot}/>
+            <Text style={styles.heroBadgeText}>{hasDemoVitals ? "Dados de demonstração" : "Medições registradas"}</Text>
+          </View>
+        </LinearGradient>
         <View style={styles.body}>
 
         <View style={styles.personArea}>
@@ -199,17 +214,25 @@ export default function MonitoringScreen({ navigation }) {
             <MaterialCommunityIcons name="pulse" size={24} color={colors.primary} />
             <Text style={styles.sectionTitle}>Sinais vitais</Text>
           </View>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.updated}>{hasDemoVitals ? "Demonstração" : "Registradas"}</Text>
-            <MaterialCommunityIcons name="refresh" size={20} color={colors.textMuted} />
-          </View>
+          <TouchableOpacity
+            style={styles.measureAction}
+            activeOpacity={0.86}
+            onPress={() => Alert.alert("Medicao", "Cadastro manual de sinais vitais pronto para expansao.")}
+          >
+            <MaterialCommunityIcons name="plus" size={19} color={colors.primary} />
+            <Text style={styles.measureActionText}>Registrar medição</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.measureMeta}>
+          <Text style={styles.updated}>{hasDemoVitals ? "Dados de demonstração" : "Medições registradas"}</Text>
+          <MaterialCommunityIcons name="refresh" size={18} color={colors.textMuted} />
         </View>
 
         <View style={styles.grid}>
-          <HealthCard status={vitals.heartRate == null ? "Demonstração" : "Registrado"} title="Frequência cardíaca" value={vitals.heartRate ?? demoVitals.heartRate} unit="bpm" icon="heart-pulse" color={colors.primary} />
-          <HealthCard status={vitals.glucose == null ? "Demonstração" : "Registrado"} title="Glicose" value={vitals.glucose ?? demoVitals.glucose} unit="mg/dL" icon="water-outline" color={colors.primary} />
-          <HealthCard status={vitals.bloodPressure == null ? "Demonstração" : "Registrado"} title="Pressão arterial" value={vitals.bloodPressure ?? demoVitals.bloodPressure} unit="mmHg" icon="gauge" color={colors.primary} />
-          <HealthCard title="Sono" value={vitals.sleep ?? demoVitals.sleep} unit="" icon="sleep" color={colors.primary} status={vitals.sleep == null ? "Demonstração" : "Registrado"} />
+          <HealthCard status={vitals.heartRate == null ? "Demonstração" : "Registrado"} title="Frequência cardíaca" value={vitals.heartRate ?? demoVitals.heartRate} unit="bpm" icon="heart-pulse" color={isDark ? "#F497A7" : "#D86879"} pulse />
+          <HealthCard status={vitals.glucose == null ? "Demonstração" : "Registrado"} title="Glicose" value={vitals.glucose ?? demoVitals.glucose} unit="mg/dL" icon="water-outline" color={isDark ? "#70DCB4" : "#199D7C"} />
+          <HealthCard status={vitals.bloodPressure == null ? "Demonstração" : "Registrado"} title="Pressão arterial" value={vitals.bloodPressure ?? demoVitals.bloodPressure} unit="mmHg" icon="gauge" color={isDark ? "#79C3EB" : "#388FB9"} />
+          <HealthCard title="Sono" value={vitals.sleep ?? demoVitals.sleep} unit="" icon="sleep" color={isDark ? "#C3ABF4" : "#7E57C2"} status={vitals.sleep == null ? "Demonstração" : "Registrado"} bars />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -221,6 +244,10 @@ export default function MonitoringScreen({ navigation }) {
         </View>
 
         <View style={styles.alertGrid}>
+          {!alerts.length ? <Card style={styles.alertCard}>
+            <View style={[styles.alertIcon, { backgroundColor: colors.primaryLight }]}><MaterialCommunityIcons name="bell-check-outline" size={26} color={colors.primary} /></View>
+            <View style={styles.alertCopy}><Text style={styles.alertTitle}>Nenhum alerta para exibir</Text><Text style={styles.alertDescription}>Seus alertas e lembretes aparecerão aqui.</Text></View>
+          </Card> : null}
           {alerts.map((alert) => (
             <Card key={alert.title} style={styles.alertCard} bordered>
               <View style={styles.alertIcon}>
@@ -268,11 +295,6 @@ export default function MonitoringScreen({ navigation }) {
           <MaterialCommunityIcons name="chevron-right" size={28} color={colors.primary} />
         </TouchableOpacity>
 
-        <Button
-          title="Adicionar novo monitoramento"
-          icon="chart-line"
-          onPress={() => Alert.alert("Monitoramento", "Cadastro manual de sinais vitais pronto para expansao.")}
-        />
         </View>
       </ScrollView>
       <BottomTab navigation={navigation} active="Monitoring" />
@@ -281,6 +303,17 @@ export default function MonitoringScreen({ navigation }) {
 }
 
 const createStyles = (colors) => StyleSheet.create({
+  monitorHero: { padding:24, paddingBottom:28, borderBottomLeftRadius:32, borderBottomRightRadius:32, overflow:"hidden" },
+  brandRow: { flexDirection:"row", alignItems:"center", justifyContent:"space-between", marginBottom:27 },
+  brand: { flexDirection:"row", alignItems:"center", gap:10 },
+  brandMark: { width:40, height:40, borderRadius:13, alignItems:"center", justifyContent:"center" },
+  brandName: { fontFamily, color:colors.primary, fontSize:17, fontWeight:"700", letterSpacing:-0.5 },
+  bell: { width:42, height:42, borderRadius:16, backgroundColor:colors.surface, alignItems:"center", justifyContent:"center" },
+  heroTitle: { fontFamily, fontSize:29, fontWeight:"700", letterSpacing:-1, color:colors.text },
+  heroSubtitle: { fontFamily, color:colors.text, opacity:0.8, fontSize:14, lineHeight:21, marginTop:6, maxWidth:460 },
+  heroBadge: { flexDirection:"row", gap:7, alignItems:"center", alignSelf:"flex-start", backgroundColor:colors.primaryLight, paddingVertical:8, paddingHorizontal:12, borderRadius:20, marginTop:20 },
+  heroDot: { width:7, height:7, borderRadius:4, backgroundColor:colors.primaryMedium },
+  heroBadgeText: { fontFamily, fontSize:12, color:colors.primary, fontWeight:"500" },
   safe: {
     flex: 1,
     backgroundColor: colors.background
@@ -292,7 +325,14 @@ const createStyles = (colors) => StyleSheet.create({
     zIndex: 4
   },
   personCard: {
-    gap: 14
+    gap: 14,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#075E52",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2
   },
   personMain: {
     flexDirection: "row",
@@ -303,14 +343,14 @@ const createStyles = (colors) => StyleSheet.create({
   avatar: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: 22,
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center"
   },
   personCopy: {
     flex: 1,
-    minWidth: 150
+    minWidth: 0
   },
   personName: {
     color: colors.text,
@@ -354,8 +394,8 @@ const createStyles = (colors) => StyleSheet.create({
   },
   profileButton: {
     borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.md,
+    borderColor: colors.border,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: "row",
@@ -373,16 +413,16 @@ const createStyles = (colors) => StyleSheet.create({
   switchButton: {
     width: 48,
     height: 48,
-    borderRadius: radius.md,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface
   },
   peopleMenu: {
     position: "absolute",
-    top: 104,
+    top: "100%",
     right: 0,
     width: 380,
     maxWidth: "100%",
@@ -479,26 +519,54 @@ const createStyles = (colors) => StyleSheet.create({
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: 8,
+    flexShrink: 1
   },
   sectionTitle: {
     color: colors.text,
-    fontFamily, fontSize: 20,
-    fontWeight: "700"
+    fontFamily, fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.3
   },
   updated: {
     color: colors.textMuted,
-    fontFamily, fontSize: 13,
-    fontWeight: "700"
+    fontFamily, fontSize: 11,
+    fontWeight: "600"
+  },
+  measureAction: {
+    minHeight: 38,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primaryMedium,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6
+  },
+  measureActionText: {
+    color: colors.primary,
+    fontFamily, fontSize: 12,
+    fontWeight: "800"
+  },
+  measureMeta: {
+    marginTop: -8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 6
   },
   link: {
     color: colors.primary,
-    fontFamily, fontSize: 14,
-    fontWeight: "700"
+    fontFamily, fontSize: 11,
+    fontWeight: "600",
+    paddingVertical: 8
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12
   },
   alertGrid: {
@@ -507,12 +575,13 @@ const createStyles = (colors) => StyleSheet.create({
   alertCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12
+    gap: 12,
+    borderRadius: 20
   },
   alertIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: colors.warningLight,
     alignItems: "center",
     justifyContent: "center"
@@ -533,13 +602,14 @@ const createStyles = (colors) => StyleSheet.create({
   },
   addDevice: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 13
+    gap: 13,
+    ...shadows.card
   },
   addIcon: {
     width: 58,

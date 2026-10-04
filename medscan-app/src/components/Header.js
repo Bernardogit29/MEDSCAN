@@ -3,6 +3,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fontFamily } from "../constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function Header({
   title,
@@ -15,7 +16,7 @@ export default function Header({
 }) {
   const { colors, styles } = useAppTheme(createStyles);
   return (
-    <View style={styles.header}>
+    <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
       <View style={styles.titleSide}>
         {onBack ? (
           <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.8}>
@@ -40,7 +41,7 @@ export default function Header({
           </TouchableOpacity>
         ) : null}
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -50,7 +51,10 @@ const createStyles = (colors) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 14,
-    marginBottom: 22
+    marginBottom: 22,
+    padding: 24,
+    borderRadius: 28,
+    overflow: "hidden"
   },
   titleSide: {
     flex: 1

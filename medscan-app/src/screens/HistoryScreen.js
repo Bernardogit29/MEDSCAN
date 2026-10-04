@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomTab from "../components/BottomTab";
+import BrandHero from "../components/BrandHero";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import api from "../api/client";
@@ -114,7 +115,8 @@ export default function HistoryScreen({ navigation, route }) {
   }
   return <SafeAreaView style={[styles.safe, desktop && desktopPage]}>
     <ScrollView contentContainerStyle={[styles.content, desktop && desktopContent]}>
-      <View style={styles.heading}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")}><MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} /></TouchableOpacity><Text style={styles.title}>Prontuário</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar prontuário" onPress={() => setRevision(value => value + 1)}><MaterialCommunityIcons name="refresh" size={23} color={colors.primary} /></TouchableOpacity></View>
+      <BrandHero title="Prontuário" subtitle="Seu histórico, mais claro. Tudo sobre seu cuidado em um só lugar." onBack={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")} />
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Atualizar prontuário" onPress={() => setRevision(value => value + 1)} style={[styles.heading, { alignSelf: "flex-end" }]}><MaterialCommunityIcons name="refresh" size={20} color={colors.primary} /><Text style={styles.personName}>Atualizar registros</Text></TouchableOpacity>
       <View style={styles.people}>
         {people.map(person => <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: person.id === personId }} key={person.id} onPress={() => selectPerson(person.id)} style={[styles.person, person.id === personId && styles.personActive]}><MaterialCommunityIcons name="account-circle-outline" size={24} color={person.id === personId ? colors.white : colors.primary} /><View><Text style={[styles.personName, person.id === personId && styles.white]}>{person.id === "self" ? "Você" : person.name}</Text><Text style={[styles.personMeta, person.id === personId && styles.white]}>{person.id === "self" ? "Titular" : "Familiar"}</Text></View></TouchableOpacity>)}
         <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Profile", { openFamilyForm: true })} style={[styles.person, styles.add]}><MaterialCommunityIcons name="plus" size={19} color={colors.primary} /><Text style={styles.personName}>Adicionar</Text></TouchableOpacity>

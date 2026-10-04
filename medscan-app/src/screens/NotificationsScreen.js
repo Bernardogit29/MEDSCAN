@@ -100,7 +100,7 @@ export default function NotificationsScreen({ navigation }) {
         <Button title="Configurar no perfil" variant="outline" onPress={() => navigation.navigate("Profile")} />
         </View>
       </ScrollView>
-      <BottomTab navigation={navigation} active="Profile" />
+      <BottomTab navigation={navigation} active="Notifications" />
     </SafeAreaView>
   );
 }

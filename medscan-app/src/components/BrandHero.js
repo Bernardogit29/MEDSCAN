@@ -4,25 +4,26 @@ import { useDesktop } from "../utils/responsive";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fontFamily } from "../constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { HeaderArtwork } from "./HomeArtwork";
 
 export default function BrandHero({ title, subtitle, badge, onBack, onNotifications, desktop = false }) {
-  const { colors, styles } = useAppTheme(createStyles);
+  const { colors, styles, isDark } = useAppTheme(createStyles);
   const wide = useDesktop();
   return (
-    <View style={[styles.hero, wide && { borderRadius: 24, padding: 32 }, desktop && styles.desktopHero]}>
-      <View pointerEvents="none" style={styles.halo} />
-      <View pointerEvents="none" style={styles.innerHalo} />
+    <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, wide && { borderRadius: 28, padding: 32 }, desktop && styles.desktopHero]}>
+      <HeaderArtwork dark={isDark} />
       <View style={styles.brandRow}>
         <View style={styles.brand}>
           {onBack ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={onBack} style={styles.brandIcon}><MaterialCommunityIcons name="arrow-left" size={21} color="white" /></TouchableOpacity> : <View style={styles.brandIcon}><MaterialCommunityIcons name="pulse" size={21} color="white" /></View>}
           <Text style={styles.brandName}>MEDSCAN</Text>
         </View>
-        {onNotifications ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={onNotifications} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={21} color="white" /></TouchableOpacity> : null}
+        {onNotifications ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={onNotifications} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={21} color={colors.primary} /></TouchableOpacity> : null}
       </View>
       <Text style={[styles.title, desktop && styles.desktopTitle]}>{title}</Text>
       <Text style={[styles.subtitle, desktop && styles.desktopSubtitle]}>{subtitle}</Text>
       {badge ? <View style={styles.status}><View style={styles.dot} /><Text style={styles.statusText}>{badge}</Text></View> : null}
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -35,12 +36,12 @@ const createStyles = (colors) => StyleSheet.create({
   innerHalo: { position: "absolute", width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: "#ffffff18", right: -55, bottom: -90 },
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 28 },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: "#ffffff16", borderWidth: 1, borderColor: "#ffffff30", alignItems: "center", justifyContent: "center" },
-  brandName: { color: "white", fontFamily, fontWeight: "700", fontSize: 15, letterSpacing: -0.4 },
-  bell: { width: 40, height: 40, borderRadius: 14, backgroundColor: "#ffffff14", borderWidth: 1, borderColor: "#ffffff30", alignItems: "center", justifyContent: "center" },
-  title: { color: "white", fontFamily, fontWeight: "700", fontSize: 27, letterSpacing: -1 },
-  subtitle: { color: "#D0EBE3", fontFamily, fontSize: 14, lineHeight: 21, marginTop: 5 },
-  status: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, marginTop: 22, backgroundColor: "#ffffff0D", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12 },
+  brandIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: "#076457", alignItems: "center", justifyContent: "center" },
+  brandName: { color: colors.primary, fontFamily, fontWeight: "700", fontSize: 17, letterSpacing: -0.4 },
+  bell: { width: 42, height: 42, borderRadius: 16, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  title: { color: colors.text, fontFamily, fontWeight: "700", fontSize: 29, letterSpacing: -1 },
+  subtitle: { color: colors.text, opacity: 0.8, fontFamily, fontSize: 14, lineHeight: 21, marginTop: 6 },
+  status: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, marginTop: 22, backgroundColor: colors.primaryLight, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#72E2BE" },
-  statusText: { color: "#D4F9EB", fontFamily, fontSize: 12, fontWeight: "600" }
+  statusText: { color: colors.primary, fontFamily, fontSize: 12, fontWeight: "600" }
 });

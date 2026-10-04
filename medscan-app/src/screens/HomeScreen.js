@@ -30,7 +30,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.safe, desktop && desktopPage]} edges={["top", "left", "right"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, desktop && desktopContent]}>
-        <LinearGradient colors={isDark ? ["#112D30", "#074C40"] : ["#F5FCFA", "#DAF5EC"]} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.homeHero, desktop && {borderRadius:28}]}>
+        <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.homeHero, desktop && {borderRadius:28}]}>
           <HeaderArtwork dark={isDark} />
           <View style={styles.brandRow}><View style={styles.brand}><LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}><MaterialCommunityIcons name="pulse" size={23} color="white"/></LinearGradient><Text style={styles.brandName}>MEDSCAN</Text></View><TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={()=>navigation.navigate("Notifications")} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/></TouchableOpacity></View>
           <Text style={styles.greeting}>{`Olá, ${firstName}`}</Text><Text style={styles.subtitle}>Seu cuidado em um só lugar</Text>
@@ -97,7 +97,7 @@ const createStyles = (colors) => StyleSheet.create({
   brandName: { fontFamily, color:colors.primary, fontSize:17, fontWeight:"700", letterSpacing:-.5 },
   bell: { width:42, height:42, borderRadius:16, backgroundColor:colors.surface, alignItems:"center", justifyContent:"center" },
   greeting: { fontFamily, fontSize:29, fontWeight:"700", letterSpacing:-1, color:colors.text },
-  subtitle: { fontFamily, color:colors.textMuted, fontSize:14, marginTop:6 },
+  subtitle: { fontFamily, color:colors.text, opacity:0.8, fontSize:14, marginTop:6 },
   healthBadge: { flexDirection:"row", gap:7, alignItems:"center", alignSelf:"flex-start", backgroundColor:colors.primaryLight, paddingVertical:8, paddingHorizontal:12, borderRadius:20, marginTop:20 },
   healthDot: { width:7, height:7, borderRadius:4, backgroundColor:colors.primaryMedium },
   healthText: { fontFamily, fontSize:12, color:colors.primary, fontWeight:"500" },
