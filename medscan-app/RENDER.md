@@ -24,6 +24,12 @@ Em Redirects/Rewrites, adicione uma regra:
 
 A regra permite abrir ou atualizar `/login`, `/monitoramento` e outras páginas diretamente. Os arquivos existentes continuam sendo servidos normalmente pelo Render.
 
+Em Headers, configure o tipo do manifesto de instalação:
+
+| Request Path | Header Name | Header Value |
+| --- | --- | --- |
+| `/manifest.webmanifest` | `Content-Type` | `application/manifest+json` |
+
 Após enviar o código ao GitHub e concluir o deploy, abra https://medscan-h9jq.onrender.com. Teste a página inicial, login, recarregamento de uma rota e envio de uma imagem de teste em um computador e em um celular.
 
 O site possui manifesto e ícones para instalação pelo navegador. No Chrome/Edge, use a opção de instalar; no Safari do iPhone, Compartilhar → Adicionar à Tela de Início. Login, consultas ao banco e análises continuam exigindo internet. Nenhum dado de saúde ou resposta da API é armazenado por um service worker.
