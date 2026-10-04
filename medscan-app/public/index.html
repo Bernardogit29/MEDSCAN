@@ -8,6 +8,22 @@
     <meta name="google" content="notranslate" />
     <meta name="description" content="MEDSCAN: organize seu cuidado, acompanhe suas medições e mantenha seu histórico de saúde em um só lugar." />
     <meta name="theme-color" content="#075E58" />
+    <meta name="color-scheme" content="light" />
+    <script>
+      // Apply the saved appearance before Android chooses its browser/system-bar colors.
+      (function () {
+        var mode = 'light';
+        try { if (localStorage.getItem('medscan.appearance') === 'dark') mode = 'dark'; } catch (_) {}
+        var background = mode === 'dark' ? '#0B171B' : '#F5FAF8';
+        var root = document.documentElement;
+        root.dataset.appearance = mode;
+        root.style.colorScheme = mode;
+        root.style.backgroundColor = background;
+        root.style.setProperty('--app-background', background);
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', background);
+        document.querySelector('meta[name="color-scheme"]').setAttribute('content', mode);
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="MEDSCAN" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -15,7 +31,7 @@
     <title>MEDSCAN</title>
     <style id="expo-reset">
       /* ScrollViews own scrolling; the document must stay inside the mobile viewport. */
-      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; background: #F8FCFB; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; background: var(--app-background, #F5FAF8); }
       #root { position: fixed; inset: 0; display: flex; height: 100%; height: 100dvh; min-height: 0; overflow: hidden; }
     </style>
   </head>

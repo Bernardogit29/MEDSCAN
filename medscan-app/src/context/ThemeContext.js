@@ -5,7 +5,7 @@ import { readTheme, writeTheme } from '../utils/themeStorage';
 
 const ThemeContext = createContext(null);
 export function ThemeProvider({ children }) {
-  const [mode, updateMode] = useState('light');
+  const [mode, updateMode] = useState(() => Platform.OS === 'web' && document.documentElement.dataset.appearance === 'dark' ? 'dark' : 'light');
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let active = true;
@@ -22,9 +22,12 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     if (Platform.OS === 'web') {
       document.documentElement.style.colorScheme = mode;
+      document.documentElement.dataset.appearance = mode;
+      document.documentElement.style.setProperty('--app-background', colors.background);
       document.documentElement.style.backgroundColor = colors.background;
       document.body.style.backgroundColor = colors.background;
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.background);
+      document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', mode);
     }
   }, [mode, colors]);
   const value = useMemo(() => ({ mode, isDark: mode === 'dark', setMode, colors }), [mode, setMode, colors]);
