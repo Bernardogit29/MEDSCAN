@@ -21,6 +21,10 @@ import CareScreen from "../screens/CareScreen";
 const Stack = createNativeStackNavigator();
 const pageTitles = {
   Care: "Cuidados e agenda",
+  Medications: "Medicamentos",
+  Allergies: "Alergias",
+  Vaccination: "Vacinação",
+  Appointments: "Consultas",
   ConsultationSummary: "Resumo para consulta",
   Welcome: "Bem-vindo",
   Login: "Entrar",
@@ -40,6 +44,10 @@ const linking = {
   config: {
     screens: {
       Care: "cuidados",
+      Medications: "medicamentos",
+      Allergies: "alergias",
+      Vaccination: "vacinacao",
+      Appointments: "consultas",
       ConsultationSummary: "resumo-consulta",
       Welcome: "",
       Login: "login",
@@ -76,6 +84,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Analyze" component={AnalyzeScreen} />
         <Stack.Screen name="Care" component={CareScreen} />
+        <Stack.Screen name="Medications" component={CareScreen} />
+        <Stack.Screen name="Allergies" component={CareScreen} />
+        <Stack.Screen name="Vaccination" component={CareScreen} />
+        <Stack.Screen name="Appointments" component={CareScreen} />
         <Stack.Screen name="ConsultationSummary" component={ConsultationSummaryScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />

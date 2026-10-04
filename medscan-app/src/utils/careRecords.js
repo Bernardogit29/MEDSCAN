@@ -1,3 +1,4 @@
+export const careRoutes = { medication: "Medications", allergy: "Allergies", vaccine: "Vaccination", appointment: "Appointments" };
 export const careKinds = {
   medication: { title: "Medicamentos", singular: "medicamento", icon: "pill" },
   allergy: { title: "Alergias", singular: "alergia", icon: "shield-alert-outline" },

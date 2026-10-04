@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -7,7 +7,7 @@ import { useAppTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
 import { getMonitoredPeople } from "../utils/monitoredPeople";
-import { careKinds, careStatuses, careTimeline, medicationAgenda, localDate, inputDate, displayDate } from "../utils/careRecords";
+import { careKinds, careRoutes, careStatuses, careTimeline, localDate, inputDate, displayDate } from "../utils/careRecords";
 import { timelineDate } from "../utils/caseTimeline";
 import { fontFamily } from "../constants/theme";
 import api from "../api/client";
@@ -18,41 +18,45 @@ import Input from "../components/Input";
 import BottomTab from "../components/BottomTab";
 import MeasurementChart from "../components/MeasurementChart";
 
-import ContagemVaccination from "../components/ContagemVaccination";
+import VaccinationOverview from "../components/VaccinationOverview";
+import CareSchedule from "../components/CareSchedule";
 
+const sectionDescriptions = { medication: "Sua rotina de medicamentos, doses e horários.", allergy: "Substâncias e reações que merecem atenção.", vaccine: "Sua carteira pessoal, organizada e fácil de acompanhar.", appointment: "Seus próximos encontros de cuidado.", timeline: "Seu histórico de cuidado em ordem cronológica.", chart: "Acompanhe a evolução das suas medições." };
 const sections = { timeline:{ title:"Linha do tempo",icon:"timeline-clock-outline" }, ...careKinds, chart:{ title:"Gráfico",icon:"chart-line" } };
 const statuses = { medication:["active","paused"],allergy:["active","inactive"],vaccine:["administered","planned"],appointment:["scheduled","completed","cancelled"] };
 const emptyForm = kind => ({ kind,name:"",dose:"",times:"08:00",startDate:"",endDate:"",date:"",time:"",nextDate:"",location:"",reaction:"",severity:"",lot:"",notes:"",status:statuses[kind]?.[0] });
 export default function CareScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme(createStyles), desktop = useDesktop(), { user, token } = useAuth();
-  const [section,setSection]=useState((sections[route.params?.section] ? route.params.section : "timeline")), [personId,setPersonId]=useState(route.params?.personId || "self");
+  const routeSection=Object.entries(careRoutes).find(([,name])=>name===route.name)?.[0] || (sections[route.params?.section] ? route.params.section : "timeline");
+  const [section,setSection]=useState(routeSection), [personId,setPersonId]=useState(route.params?.personId || "self");
+  const [showPeople,setShowPeople]=useState(false), [showAllRecords,setShowAllRecords]=useState(false);
   const scope = `${user?._id || user?.id || "guest"}:${personId}`;
   const scopeRef = useRef(scope); scopeRef.current = scope;
   useEffect(()=>{setForm(null);setActionError("");},[scope]);
   const [people,setPeople]=useState(()=>getMonitoredPeople(user)), [records,setRecords]=useState([]), [doses,setDoses]=useState([]), [analyses,setAnalyses]=useState([]), [measurements,setMeasurements]=useState([]);
   const [loading,setLoading]=useState(false), [errors,setErrors]=useState({}), [revision,setRevision]=useState(0), [showArchived,setShowArchived]=useState(false), [filter,setFilter]=useState("all"), [visible,setVisible]=useState(30);
   const [form,setForm]=useState(null), [formError,setFormError]=useState(""), [saving,setSaving]=useState(false), [actionError,setActionError]=useState(""), [busy,setBusy]=useState("");
-  useEffect(()=>{setSection((sections[route.params?.section] ? route.params.section : "timeline"));setPersonId(route.params?.personId || "self");},[route.params?.section,route.params?.personId,route.params?.revision]);
+  useEffect(()=>{setSection(routeSection);setPersonId(route.params?.personId || "self");setShowArchived(false);setShowPeople(false);},[routeSection,route.params?.personId,route.params?.revision]);
   useFocusEffect(useCallback(()=>{
     let active=true;setRecords([]);setDoses([]);setAnalyses([]);setMeasurements([]);setErrors({});setActionError("");setVisible(30);
     if (!token || !user) {setLoading(false);return;}
     setLoading(true);
-    Promise.allSettled([api.get("/profile"),api.get(`/care?personId=${encodeURIComponent(personId)}`),api.get(`/history?personId=${encodeURIComponent(personId)}`),api.get(`/monitoring/history?personId=${encodeURIComponent(personId)}`)]).then(results=>{
+    Promise.allSettled([api.get("/profile"),api.get(`/care?personId=${encodeURIComponent(personId)}`),section === "timeline" ? api.get(`/history?personId=${encodeURIComponent(personId)}`) : Promise.resolve({data:[]}),["timeline","chart"].includes(section) ? api.get(`/monitoring/history?personId=${encodeURIComponent(personId)}`) : Promise.resolve({data:{records:[]}})]).then(results=>{
       if(!active)return;
       const issues={};
       if(results[0].status==="fulfilled"){
         const data=results[0].value.data, loaded=getMonitoredPeople(data.user || user,data.profile?.relatives || []);setPeople(loaded);
         if(!loaded.some(person=>person.id===personId)){setPersonId("self");return;}
       }else issues.profile="Não foi possível carregar a lista de pessoas.";
-      if(results[1].status==="fulfilled" && Array.isArray(results[1].value.data.records) && Array.isArray(results[1].value.data.doses)){setRecords(results[1].value.data.records);setDoses(results[1].value.data.doses);}else issues.care="Medicamentos, alergias, vacinas e consultas não puderam ser carregados. Atualize e tente novamente.";
+      if(results[1].status==="fulfilled" && Array.isArray(results[1].value.data.records) && Array.isArray(results[1].value.data.doses)){setRecords(results[1].value.data.records);setDoses(results[1].value.data.doses);}else issues.care="Não foi possível carregar os registros desta seção. Atualize e tente novamente.";
       if(results[2].status==="fulfilled" && Array.isArray(results[2].value.data))setAnalyses(results[2].value.data);else issues.analyses="Análises indisponíveis na linha do tempo.";
       if(results[3].status==="fulfilled" && Array.isArray(results[3].value.data.records))setMeasurements(results[3].value.data.records);else issues.measurements="Medições indisponíveis. Não foi possível montar o gráfico completo.";
       setErrors(issues);setLoading(false);
     }).catch(()=>{if(active){setErrors({care:"Não foi possível carregar o prontuário. Tente novamente."});setLoading(false);}});return()=>{active=false;};
-  },[user,token,personId,revision]));
+  },[user,token,personId,revision,section]));
   const title=sections[section]?.title || "Prontuário", selectedName=people.find(person=>person.id===personId)?.name || "Pessoa selecionada";
-  const agenda=medicationAgenda(records,doses);
-  const listed=records.filter(record=>record.kind===section && Boolean(record.archived)===showArchived).sort((a,b)=>(b.date || b.createdAt).localeCompare(a.date || a.createdAt));
+  const scheduledSection=["medication","appointment"].includes(section);
+  const listed=records.filter(record=>record.kind===section && Boolean(record.archived)===showArchived).sort((a,b)=>String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")));
   const events=useMemo(()=>careTimeline(analyses,measurements,records,doses),[analyses,measurements,records,doses]).filter(event=>filter==="all" || event.kind===filter);
   function chip(label,selected,onPress,key=label){return <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{selected}} onPress={onPress} style={[styles.chip,selected && styles.chipActive]}><Text style={{color:selected?"white":colors.text,fontFamily,fontSize:12}}>{label}</Text></TouchableOpacity>;}
   function edit(record){setFormError("");setForm(record?{...emptyForm(record.kind),...record,times:(record.times || []).join(", "),...Object.fromEntries(["date","startDate","endDate","nextDate"].map(key=>[key,record[key]?displayDate(record[key]):""]))}:emptyForm(section));}
@@ -82,9 +86,14 @@ export default function CareScreen({ navigation, route }) {
   }
   const field=(key,label,placeholder,multiline=false)=><Input key={key} label={label} value={form?.[key] || ""} onChangeText={value=>setForm(current=>({...current,[key]:value}))} editable={!saving} placeholder={placeholder} multiline={multiline}/>;
   return <SafeAreaView style={[styles.safe,desktop && desktopPage]}><ScrollView contentContainerStyle={[styles.content,desktop && desktopContent]}>
-    <Header title={title} subtitle="Seu prontuário, organizado em um só lugar." onBack={()=>navigation.canGoBack()?navigation.goBack():navigation.navigate("History")} showBell={false}/>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.row}>{people.map(person=>chip(person.name,person.id===personId,()=>{setPersonId(person.id);setShowArchived(false);},person.id))}</View></ScrollView>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={styles.row}>{Object.entries(sections).map(([key,item])=>chip(item.title,section===key,()=>{setSection(key);setShowArchived(false);setFilter("all");},key))}</View></ScrollView>
+    <Header title={title} subtitle={sectionDescriptions[section]} onBack={()=>navigation.canGoBack()?navigation.goBack():navigation.navigate("History")} showBell={false}/>
+    <View style={styles.personBar}>
+      <View style={styles.personIcon}><MaterialCommunityIcons name="account-outline" size={20} color={colors.primary}/></View>
+      <View style={{flex:1,gap:3}}><Text style={styles.note}>REGISTROS DE</Text><Text style={styles.heading}>{selectedName}</Text></View>
+      {people.length>1?<TouchableOpacity accessibilityRole="button" accessibilityLabel="Trocar pessoa" accessibilityState={{expanded:showPeople}} onPress={()=>setShowPeople(value=>!value)} style={styles.personSwitch}><Text style={styles.badge}>Trocar</Text><MaterialCommunityIcons name={showPeople?"chevron-up":"chevron-down"} size={19} color={colors.primary}/></TouchableOpacity>:null}
+    </View>
+    {showPeople?<View style={styles.row}>{people.map(person=>chip(person.name,person.id===personId,()=>{setPersonId(person.id);setShowArchived(false);setShowPeople(false);},person.id))}</View>:null}
+    {section==="vaccine" && !token ? <VaccinationOverview records={[]} unavailable/>:null}
     {!token ? <Card><Text style={styles.copy}>Entre para consultar e salvar seus registros.</Text><Button title="Entrar" onPress={()=>navigation.navigate("Login",{returnToPrevious:true})}/></Card> : <>
     {loading?<ActivityIndicator accessibilityLabel="Carregando prontuário" color={colors.primary}/>:null}
     {Object.values(errors).map(message=><Text key={message} accessibilityRole="alert" style={styles.error}>{message}</Text>)}
@@ -101,11 +110,10 @@ export default function CareScreen({ navigation, route }) {
       <Text style={styles.note}>Até 1.000 registros de cuidado e tomadas, mais as análises e até 100 medições recentes. Registros arquivados permanecem na linha do tempo.</Text>
     </>:section==="chart" ? <Card><MeasurementChart records={measurements} onRegister={()=>navigation.navigate("History",{personId,openMeasurement:true,revision:Date.now()})}/></Card>:<>
       <Button title={`Adicionar ${careKinds[section]?.singular || "registro"}`} icon="plus" disabled={loading || Boolean(errors.care)} onPress={()=>edit(null)}/>
-      {section==="medication" ? <Card>
-        <Text style={styles.heading}>Agenda de hoje · {displayDate(localDate())}</Text><Text style={styles.note}>Horários e doses informados por você, conforme a prescrição. A agenda é exibida no app; não envia alarmes ou notificações.</Text>
-        {!agenda.length?<Text style={styles.copy}>{loading?"Carregando agenda…":errors.care?"Agenda indisponível até os registros serem carregados.":"Nenhum medicamento ativo para hoje."}</Text>:agenda.map(item=><View key={`${item.record._id}:${item.time}`} style={styles.agendaItem}><Text style={styles.time}>{item.time}</Text><View style={{flex:1,gap:5}}><Text style={styles.heading}>{item.record.name}</Text><Text style={styles.copy}>{item.record.dose}</Text>{item.taken?<Text style={styles.note}>Tomada registrada · {timelineDate(item.taken.takenAt)}</Text>:<Button title="Registrar que tomei" variant="outline" disabled={Boolean(busy)} onPress={()=>taken(item)}/>}</View></View>)}
-      </Card>:null}
-      {section==="vaccine" ? <Card><Text style={styles.heading}>Minha carteira de vacinação</Text><Text style={styles.note}>Cópia pessoal das doses informadas por você. Não substitui a carteira oficial e não consulta automaticamente os registros do SUS.</Text><Text style={styles.heading}>Próximas doses registradas</Text>{records.filter(record=>record.kind==="vaccine" && !record.archived && (record.status==="planned" || record.nextDate) && (record.nextDate || record.date)>=localDate()).sort((a,b)=>(a.nextDate || a.date).localeCompare(b.nextDate || b.date)).map(record=><Text key={record._id} style={styles.copy}>{record.name} · {displayDate(record.nextDate || record.date)}{record.location?` · ${record.location}`:""} · confirmar no posto</Text>)}<Text style={styles.note}>As datas acima são as que você registrou, não recomendações automáticas.</Text><Button title="Calendário oficial do Ministério da Saúde" variant="outline" onPress={()=>Linking.openURL("https://www.gov.br/saude/pt-br/vacinacao/calendario")}/><Button title="Carteira oficial no Meu SUS Digital" variant="outline" onPress={()=>Linking.openURL("https://www.gov.br/saude/pt-br/composicao/seidigi/meususdigital")}/><ContagemVaccination/></Card>:null}
+      {scheduledSection?<CareSchedule key={scope+section} kind={section} records={records} doses={doses} onTaken={taken} onEdit={edit} busy={busy} unavailable={loading || Boolean(errors.care)}/>:null}
+      {scheduledSection?<TouchableOpacity accessibilityRole="button" accessibilityState={{expanded:showAllRecords}} onPress={()=>setShowAllRecords(value=>!value)} style={styles.recordsToggle}><Text style={styles.badge}>{showAllRecords?"Fechar lista de registros":"Gerenciar todos os registros"}</Text><MaterialCommunityIcons name={showAllRecords?"chevron-up":"chevron-down"} size={20} color={colors.primary}/></TouchableOpacity>:null}
+      {section==="vaccine" ? <VaccinationOverview records={records} unavailable={loading || Boolean(errors.care)}/>:null}
+      {!scheduledSection || showAllRecords ? <>
       <View style={styles.row}>{chip("Registros atuais",!showArchived,()=>setShowArchived(false))}{chip("Arquivados",showArchived,()=>setShowArchived(true))}</View>
       {!loading && !listed.length && !errors.care?<Text style={styles.note}>Nenhum registro {showArchived?"arquivado":"nesta seção"} para {selectedName}.</Text>:null}
       {listed.map(record=><Card key={record._id} style={{gap:10}}><View style={styles.row}><MaterialCommunityIcons name={careKinds[record.kind].icon} size={24} color={colors.primary}/><Text style={[styles.heading,{flex:1}]}>{record.name}</Text></View><Text style={styles.badge}>{careStatuses[record.status]}{record.archived?" · Arquivado":""}</Text>
@@ -113,6 +121,7 @@ export default function CareScreen({ navigation, route }) {
         {record.date?<Text style={styles.copy}>{displayDate(record.date)} {record.time || ""}</Text>:null}{record.location?<Text style={styles.copy}>{record.location}</Text>:null}{record.reaction?<Text style={styles.copy}>Reação relatada: {record.reaction}</Text>:null}{record.severity?<Text style={styles.copy}>Gravidade informada: {record.severity}</Text>:null}{record.lot?<Text style={styles.copy}>Lote: {record.lot}</Text>:null}{record.notes?<Text style={styles.note}>{record.notes}</Text>:null}
         <View style={styles.row}><Button title="Editar" variant="outline" disabled={Boolean(busy)} onPress={()=>edit(record)}/><Button title={record.archived?"Restaurar":"Arquivar"} variant="outline" disabled={Boolean(busy)} onPress={()=>update(record,{archived:!record.archived})}/></View>
       </Card>)}
+      </>:null}
     </>}
     </>}
   </ScrollView><BottomTab navigation={navigation} active="History"/>
@@ -133,6 +142,7 @@ export default function CareScreen({ navigation, route }) {
 }
 const createStyles=colors=>StyleSheet.create({
   safe:{flex:1,backgroundColor:colors.background},content:{padding:20,paddingBottom:130,gap:17,width:"100%",maxWidth:860,alignSelf:"center"},
+  personBar:{flexDirection:"row",gap:12,alignItems:"center",paddingVertical:8},personIcon:{width:42,height:42,borderRadius:14,backgroundColor:colors.primaryLight,alignItems:"center",justifyContent:"center"},personSwitch:{minHeight:44,flexDirection:"row",gap:5,alignItems:"center",paddingHorizontal:10},recordsToggle:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:10,minHeight:48,borderTopWidth:1,borderTopColor:colors.border,paddingTop:12},
   row:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:10},chip:{padding:12,borderRadius:14,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},chipActive:{backgroundColor:colors.hero},
   heading:{fontFamily,fontSize:16,fontWeight:"700",color:colors.text},copy:{fontFamily,fontSize:14,lineHeight:23,color:colors.text},note:{fontFamily,fontSize:12,lineHeight:20,color:colors.textMuted},
   badge:{color:colors.primary,fontFamily,fontSize:12,fontWeight:"600"},error:{color:colors.danger,lineHeight:22},time:{fontFamily,fontSize:19,fontWeight:"700",color:colors.primary},

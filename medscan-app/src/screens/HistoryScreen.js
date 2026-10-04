@@ -1,3 +1,4 @@
+import { careRoutes } from "../utils/careRecords";
 import { useAppTheme } from "../context/ThemeContext";
 import { groupAnalyses } from "../utils/analysisGroups";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
@@ -126,7 +127,7 @@ export default function HistoryScreen({ navigation, route }) {
       <View style={styles.group}><Row icon="timeline-clock-outline" title="Linha do tempo completa" subtitle="Relatos, medições, doses, vacinas e consultas" onPress={() => navigation.navigate("Care", { section: "timeline", personId, revision: Date.now() })} /></View>
       <Text style={styles.section}>SAÚDE E AGENDA</Text>
       <View style={styles.group}>
-        {[ ["medication", "pill", "Medicamentos", "Agenda diária, horários e tomadas"], ["allergy", "shield-alert-outline", "Alergias", "Substâncias e reações registradas"], ["vaccine", "needle", "Vacinação", "Minha carteira, próximas doses e postos"], ["appointment", "calendar-clock", "Consultas marcadas", "Datas, horários e locais"] ].map(([section,icon,title,subtitle]) => <Row key={section} icon={icon} title={title} subtitle={subtitle} onPress={() => navigation.navigate("Care", { section, personId, revision: Date.now() })} />)}
+        {[ ["medication", "pill", "Medicamentos", "Agenda diária, horários e tomadas"], ["allergy", "shield-alert-outline", "Alergias", "Substâncias e reações registradas"], ["vaccine", "needle", "Vacinação", "Minha carteira, próximas doses e postos"], ["appointment", "calendar-clock", "Consultas marcadas", "Datas, horários e locais"] ].map(([section,icon,title,subtitle]) => <Row key={section} icon={icon} title={title} subtitle={subtitle} onPress={() => navigation.navigate(careRoutes[section], { section, personId, revision: Date.now() })} />)}
       </View>
       <Text style={styles.section}>HISTÓRICO DE SAÚDE</Text>
       <View style={styles.group}>
