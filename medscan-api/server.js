@@ -26,6 +26,11 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(uploadsDir));
 
+// Endpoint leve para monitoramento externo e health check do Render.
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.get("/", (req, res) => {
   res.json({
     name: "MEDSCAN API",

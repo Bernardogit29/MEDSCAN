@@ -47,3 +47,15 @@ npm run preview:web
 Essa variável vale somente no terminal atual e não altera o `.env` local. O build recusa URLs HTTP/localhost para impedir que o site público aponte para o computador de cada visitante.
 
 O preview local serve os arquivos exportados; a regra de fallback das rotas diretas deve ser verificada no Render.
+
+## Feira de ciências: manter a API pronta
+
+O Static Site fica sempre disponível. A API `medscan-api` no plano gratuito do Render entra em pausa depois de 15 minutos sem requisições e pode levar cerca de um minuto para voltar. Nos dias da feira, use um monitor externo, como UptimeRobot, para fazer uma requisição a cada 10 minutos para uma rota simples de saúde da API:
+
+```text
+https://medscan-api-f658.onrender.com/health
+```
+
+Ative o monitor na véspera ou pouco antes de a feira começar e desative-o quando terminar. Manter a API acordada o mês inteiro consome quase todas as 750 horas gratuitas mensais do Render; por isso o monitor deve ficar ativo somente nos dias do evento.
+
+Antes de criar o monitor, confirme que a rota `/health` responde `200 OK`. Não use `/robots.txt`, pois o Render trata esse caminho de forma especial quando uma instância gratuita está pausada.
