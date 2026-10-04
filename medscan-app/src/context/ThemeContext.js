@@ -22,7 +22,9 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     if (Platform.OS === 'web') {
       document.documentElement.style.colorScheme = mode;
+      document.documentElement.style.backgroundColor = colors.background;
       document.body.style.backgroundColor = colors.background;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.background);
     }
   }, [mode, colors]);
   const value = useMemo(() => ({ mode, isDark: mode === 'dark', setMode, colors }), [mode, setMode, colors]);
