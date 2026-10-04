@@ -6,16 +6,19 @@ const originalPost = axios.post;
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_MODEL;
 const originalFallback = process.env.GEMINI_FALLBACK_MODEL;
-const groqKeys = ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_FALLBACK_ENABLED'];
-const originalGroq = Object.fromEntries(groqKeys.map(key => [key, process.env[key]]));
-beforeEach(() => { for (const key of groqKeys) delete process.env[key]; });
+const reserveKeys = ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_FALLBACK_ENABLED',
+  'MISTRAL_API_KEY', 'MISTRAL_MODEL', 'MISTRAL_FALLBACK_ENABLED',
+  'OPENROUTER_API_KEY', 'OPENROUTER_FALLBACK_ENABLED',
+  'COHERE_API_KEY', 'COHERE_MODEL', 'COHERE_FALLBACK_ENABLED'];
+const originalReserves = Object.fromEntries(reserveKeys.map(key => [key, process.env[key]]));
+beforeEach(() => { for (const key of reserveKeys) delete process.env[key]; });
 afterEach(() => {
   axios.post = originalPost;
   if (originalKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = originalKey;
   if (originalModel === undefined) delete process.env.GEMINI_MODEL; else process.env.GEMINI_MODEL = originalModel;
   if (originalFallback === undefined) delete process.env.GEMINI_FALLBACK_MODEL; else process.env.GEMINI_FALLBACK_MODEL = originalFallback;
-  for (const key of groqKeys) {
-    if (originalGroq[key] === undefined) delete process.env[key]; else process.env[key] = originalGroq[key];
+  for (const key of reserveKeys) {
+    if (originalReserves[key] === undefined) delete process.env[key]; else process.env[key] = originalReserves[key];
   }
 });
 function response() {
@@ -304,4 +307,93 @@ test('numbered question-answer rounds reach both providers in the same structure
   await analyzeMedicalData({symptoms:'Relato fictício',followUpContext:[{questions:['Usa óculos?','Melhora ao descansar?'],answer:'1-sim, 2-não'}]});
   assert.deepEqual(payloads[0],payloads[1]);
   assert.deepEqual(payloads[0].complementos,[{perguntasDaIA:[{numero:1,pergunta:'Usa óculos?'},{numero:2,pergunta:'Melhora ao descansar?'}],respostaDaPessoa:'1-sim, 2-não'}]);
+});
+
+test('falls through exhausted Gemini and Groq to Mistral with the same health context', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  const calls = [];
+  axios.post = async (url, body, config) => {
+    calls.push({ url, body, config });
+    if (calls.length < 3) throw { response: { status: 429 } };
+    return groqReply();
+  };
+  const result = await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.deepEqual(calls.map(call => new URL(call.url).host), [
+    'generativelanguage.googleapis.com', 'api.groq.com', 'api.mistral.ai'
+  ]);
+  assert.equal(calls[2].config.headers.Authorization, 'Bearer mistral-test');
+  assert.equal(calls[2].body.messages[1].content, calls[0].body.contents[0].parts[0].text);
+  assert.equal(result.source, 'mistral');
+  assert.equal(result.model, 'mistral-small-latest');
+});
+
+test('Mistral receives an image when Gemini is unavailable', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  const fs = require('node:fs/promises'); const stat = fs.stat; const read = fs.readFile;
+  fs.stat = async () => ({ size: 12 }); fs.readFile = async () => 'ZmljdGl0aW91cw==';
+  try {
+    const calls = [];
+    axios.post = async (url, body) => {
+      calls.push({ url, body });
+      if (calls.length === 1) throw { response: { status: 503 } };
+      return groqReply();
+    };
+    const result = await analyzeMedicalData({ symptoms: 'relato fictício', image: { path: 'mock-only', mimetype: 'image/png' } });
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].url, /api\.mistral\.ai/);
+    assert.equal(calls[1].body.messages[1].content[1].image_url, 'data:image/png;base64,ZmljdGl0aW91cw==');
+    assert.equal(result.source, 'mistral'); assert.equal(result.imageReceived, true);
+  } finally { fs.stat = stat; fs.readFile = read; }
+});
+
+test('OpenRouter is last text reserve and locked to free models', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  process.env.OPENROUTER_FALLBACK_ENABLED = 'true'; process.env.OPENROUTER_API_KEY = 'router-test';
+  const calls = [];
+  axios.post = async (url, body) => {
+    calls.push({ url, body });
+    if (calls.length < 4) throw { response: { status: 429 } };
+    return groqReply();
+  };
+  const result = await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.equal(calls[3].url, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(calls[3].body.model, 'openrouter/free');
+  assert.equal(calls[3].body.provider.require_parameters, true);
+  assert.equal(calls[3].body.provider.data_collection, 'deny');
+  assert.equal(result.source, 'openrouter');
+});
+
+test('backup success does not hide an incomplete medical report', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  let calls = 0;
+  axios.post = async () => {
+    if (++calls === 1) throw { response: { status: 503 } };
+    const incomplete = response(); delete incomplete.report.nextSteps;
+    return { data: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(incomplete) } }] } };
+  };
+  await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.code === 'AI_INVALID_RESPONSE');
+  assert.equal(calls, 2);
+});
+
+test('Cohere is the final text reserve and preserves the validated report shape', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  process.env.OPENROUTER_FALLBACK_ENABLED = 'true'; process.env.OPENROUTER_API_KEY = 'router-test';
+  process.env.COHERE_FALLBACK_ENABLED = 'true'; process.env.COHERE_API_KEY = 'cohere-test';
+  const calls = [];
+  axios.post = async (url, body, config) => {
+    calls.push({ url, body, config });
+    if (calls.length < 5) throw { response: { status: 429 } };
+    return { data: { finish_reason: 'COMPLETE', message: { content: [{ type: 'text', text: JSON.stringify(response()) }] } } };
+  };
+  const result = await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.equal(calls[4].url, 'https://api.cohere.com/v2/chat');
+  assert.equal(calls[4].config.headers.Authorization, 'Bearer cohere-test');
+  assert.equal(calls[4].body.model, 'command-a-03-2025');
+  assert.deepEqual(calls[4].body.response_format.schema, calls[0].body.generationConfig.responseJsonSchema);
+  assert.equal(result.source, 'cohere');
 });

@@ -138,6 +138,52 @@ async function requestGroq({ apiKey, model, parts, timeout }) {
   return parseReport(choice.message.content);
 }
 
+async function requestReserve({ provider, apiKey, model, parts, timeout }) {
+  const urls = {
+    mistral: "https://api.mistral.ai/v1/chat/completions",
+    openrouter: "https://openrouter.ai/api/v1/chat/completions"
+  };
+  const content = parts.length === 1 ? parts[0].text : [
+    { type: "text", text: parts[0].text },
+    { type: "image_url", image_url: `data:${parts[1].inlineData.mimeType};base64,${parts[1].inlineData.data}` }
+  ];
+  const response = await axios.post(urls[provider], {
+    model,
+    messages: [
+      { role: "system", content: SYSTEM_INSTRUCTION },
+      { role: "user", content }
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "medscan_report", strict: true, schema: analysisResponseSchema } },
+    ...(provider === "openrouter" ? { provider: { require_parameters: true, data_collection: "deny" } } : {}),
+    max_tokens: 4096,
+    stream: false
+  }, { headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, timeout });
+  const choice = response.data?.choices?.[0];
+  if (choice?.finish_reason !== "stop" || choice.message?.refusal || typeof choice.message?.content !== "string") {
+    throw new Error("Resposta interrompida ou bloqueada pelo provedor reserva.");
+  }
+  return parseReport(choice.message.content);
+}
+
+async function requestCohere({ apiKey, model, parts, timeout }) {
+  const response = await axios.post("https://api.cohere.com/v2/chat", {
+    model,
+    messages: [
+      { role: "system", content: SYSTEM_INSTRUCTION },
+      { role: "user", content: parts[0].text }
+    ],
+    response_format: { type: "json_object", schema: analysisResponseSchema },
+    max_tokens: 4096,
+    temperature: 0.3,
+    stream: false
+  }, { headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, timeout });
+  const text = response.data?.message?.content?.filter(part => part.type === "text").map(part => part.text || "").join("\n");
+  if (String(response.data?.finish_reason).toUpperCase() !== "COMPLETE" || !text) {
+    throw new Error("Resposta interrompida ou bloqueada pelo provedor reserva.");
+  }
+  return parseReport(text);
+}
+
 async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }) {
   if (typeof symptoms !== "string" || symptoms.length > 12000) {
     throw providerError("Descreva os sintomas em até 12.000 caracteres.", 400);
@@ -154,8 +200,27 @@ async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }
   const imagePart = await buildImagePart(image);
   const groqKey = process.env.GROQ_API_KEY?.trim();
   const groqModel = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
-  // The selected Groq model is text-only: never discard an image to use the reserve.
-  const useGroq = process.env.GROQ_FALLBACK_ENABLED === "true" && Boolean(groqKey) && !imagePart;
+  const mistralKey = process.env.MISTRAL_API_KEY?.trim();
+  const mistralModel = process.env.MISTRAL_MODEL?.trim() || "mistral-small-latest";
+  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
+  const cohereKey = process.env.COHERE_API_KEY?.trim();
+  const cohereModel = process.env.COHERE_MODEL?.trim() || "command-a-03-2025";
+  // OpenRouter's free router can change models; use it only as the last text reserve.
+  const reserves = [
+    ...((process.env.GROQ_FALLBACK_ENABLED === "true" && groqKey && !imagePart)
+      ? [{ provider: "groq", model: groqModel, apiKey: groqKey }] : []),
+    ...((process.env.MISTRAL_FALLBACK_ENABLED === "true" && mistralKey)
+      ? [{ provider: "mistral", model: mistralModel, apiKey: mistralKey }] : []),
+    ...((process.env.OPENROUTER_FALLBACK_ENABLED === "true" && openRouterKey && !imagePart)
+      ? [{ provider: "openrouter", model: "openrouter/free", apiKey: openRouterKey }] : []),
+    ...((process.env.COHERE_FALLBACK_ENABLED === "true" && cohereKey && !imagePart)
+      ? [{ provider: "cohere", model: cohereModel, apiKey: cohereKey }] : [])
+  ];
+  const primary = { provider: "gemini", model, apiKey };
+  const secondary = { ...primary, model: fallbackModel || model };
+  const targets = reserves.length ? [primary, ...reserves] : [primary, secondary, secondary];
+  let targetIndex = 0;
+  let retriedJsonOutput = false;
   const parts = [{ text: JSON.stringify({
     relato: symptoms.trim() || "Imagem enviada sem descrição.", imagemAnexada: Boolean(imagePart),
     complementos: followUpContext.map(turn => ({
@@ -165,22 +230,34 @@ async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }
   }) }];
   if (imagePart) parts.push(imagePart);
   try {
-    const data = await withProviderRetry((timeout, attempt) => {
-      if (attempt > 0 && useGroq) {
-        respondingProvider = "groq";
-        respondingModel = groqModel;
-        return requestGroq({ model: groqModel, apiKey: groqKey, parts, timeout });
+    const data = await withProviderRetry(timeout => {
+      const target = targets[targetIndex];
+      respondingProvider = target.provider;
+      respondingModel = target.model;
+      if (target.provider === "gemini") return requestGemini({ ...target, parts, timeout });
+      if (target.provider === "groq") return requestGroq({ ...target, parts, timeout });
+      if (target.provider === "cohere") return requestCohere({ ...target, parts, timeout });
+      return requestReserve({ ...target, parts, timeout });
+    }, {
+      maxAttempts: targets.length * 2,
+      shouldRetry: error => {
+        const status = error.response?.status;
+        const reason = providerFailureReason(error);
+        if (status === 400 && reason === "generated_json_invalid" && respondingProvider !== "gemini" && !retriedJsonOutput) {
+          retriedJsonOutput = true;
+          return true;
+        }
+        if (targetIndex >= targets.length - 1) return false;
+        const next = targets[targetIndex + 1];
+        const independent = next.provider !== respondingProvider;
+        if ([429, 402].includes(status) && !independent) return false;
+        if (![429, 402, 500, 502, 503, 504].includes(status) &&
+            !(independent && status === 400 && ["generated_json_invalid", "unsupported_response_format"].includes(reason))) return false;
+        targetIndex += 1;
+        retriedJsonOutput = false;
+        return true;
       }
-      respondingModel = attempt > 0 && fallbackModel ? fallbackModel : model;
-      return requestGemini({ model: respondingModel, apiKey, parts, timeout });
-    }, useGroq ? {
-      maxAttempts: 3,
-      // Independent provider, once only. Never retry a quota failure on the same provider.
-      // One extra Groq generation is allowed only for an explicit output-format failure.
-      shouldRetry: (error, attempt) => attempt === 0
-        ? [429, 500, 502, 503, 504].includes(error.response?.status)
-        : attempt === 1 && error.response?.status === 400 && providerFailureReason(error) === "generated_json_invalid"
-    } : {});
+    });
     return { ...data, confidence: null, source: respondingProvider, model: respondingModel, promptVersion: "medscan-v3", imageReceived: Boolean(imagePart) };
   } catch (error) {
     const status = error.response?.status;
@@ -190,7 +267,7 @@ async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }
     if ([500, 502, 503, 504].includes(status)) throw providerError("A IA continua temporariamente indisponível após as tentativas de recuperação. Seu relato foi mantido. Tente novamente mais tarde.", 503, "AI_UNAVAILABLE");
     if (status === 429) throw providerError("O serviço de IA atingiu o limite de uso. Seu relato foi mantido. O responsável pelo aplicativo precisa verificar a cota e o saldo da API antes de novas tentativas.", 429, "AI_QUOTA_EXCEEDED");
     if (status === 402) throw providerError("O serviço de IA está sem saldo disponível. Seu relato foi mantido. O responsável pelo aplicativo precisa revisar o faturamento da API.", 503, "AI_BILLING_REQUIRED");
-    if (status === 401 || status === 403) throw providerError("A chave da IA está sem acesso ao serviço. O responsável pelo aplicativo precisa revisar a configuração da API.", 503, "AI_ACCESS_DENIED");
+    if ([401, 403, 498].includes(status)) throw providerError("A chave da IA está sem acesso ao serviço. O responsável pelo aplicativo precisa revisar a configuração da API.", 503, "AI_ACCESS_DENIED");
     if (status === 404) throw providerError("O modelo de IA configurado não está disponível para gerar análises. O responsável pelo aplicativo precisa atualizar essa configuração.", 503, "AI_MODEL_UNAVAILABLE");
     if (status === 400 && reason === "generated_json_invalid") throw providerError("A IA não conseguiu organizar uma resposta completa. Seu texto foi mantido. Tente atualizar a orientação novamente.", 502, "AI_OUTPUT_FORMAT");
     if (status === 400 && reason === "context_limit") throw providerError("Este relato ultrapassou o limite de processamento da IA. Seu texto foi mantido. Inicie um novo relato resumindo as informações.", 422, "AI_CONTEXT_LIMIT");

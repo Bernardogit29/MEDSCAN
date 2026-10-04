@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fontFamily, radius, shadows } from "../constants/theme";
+import MedscanWordmark from "./MedscanWordmark";
 
 const tabs = [
   { route: "Home", label: "Início", icon: "home-outline" },
@@ -18,7 +19,7 @@ export default function BottomTab({ navigation, active = "Home" }) {
   const insets = useSafeAreaInsets();
   const desktop = useDesktop();
   if (desktop) return <View style={styles.sidebar}>
-    <View style={styles.logo}><MaterialCommunityIcons name="pulse" size={25} color={colors.primary} /><Text style={styles.logoText}>MEDSCAN</Text></View>
+    <View style={styles.logo}><MaterialCommunityIcons name="pulse" size={25} color={colors.primary} /><MedscanWordmark size={20} dark={colors.primary} light={colors.primaryMedium} /></View>
     <Text style={styles.menuCaption}>SEU ESPAÇO DE SAÚDE</Text>
     {[tabs[0], { route: "Analyze", label: "Conversar com IA", icon: "creation" }, ...tabs.slice(1), { route: "Notifications", label: "Notificações", icon: "bell-outline" }].map(tab => <TouchableOpacity key={tab.route} accessibilityRole="tab" accessibilityState={{ selected: active === tab.route }} onPress={() => navigation.navigate(tab.route)} style={[styles.navItem, active === tab.route && styles.selectedNav]}><MaterialCommunityIcons name={tab.icon} size={21} color={active === tab.route ? colors.white : colors.primary} /><Text style={[styles.navLabel, active === tab.route && { color: colors.white }]}>{tab.label}</Text></TouchableOpacity>)}
     <View style={styles.sidebarFoot}><MaterialCommunityIcons name="heart-outline" size={20} color={colors.primary} /><Text style={styles.footText}>{"Seu cuidado,\nmais perto."}</Text></View>
@@ -62,7 +63,6 @@ export default function BottomTab({ navigation, active = "Home" }) {
 const createStyles = (colors) => StyleSheet.create({
   sidebar: { position: "fixed", left: 0, top: 0, bottom: 0, width: 240, backgroundColor: colors.surface, padding: 22, borderRightWidth: 1, borderColor: colors.border, gap: 8 },
   logo: { flexDirection: "row", gap: 9, alignItems: "center", paddingVertical: 16, marginBottom: 32 },
-  logoText: { fontFamily, color: colors.primary, fontSize: 19, fontWeight: "700" },
   menuCaption: { fontFamily, fontSize: 9, letterSpacing: 1.2, color: colors.textMuted, marginBottom: 14 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 10, padding: 13, borderRadius: 12 },
   selectedNav: { backgroundColor: colors.hero },

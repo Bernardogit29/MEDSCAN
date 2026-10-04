@@ -14,6 +14,7 @@ import { HeaderArtwork } from "../components/HomeArtwork";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { fontFamily, radius, shadows } from "../constants/theme";
+import MedscanWordmark from "../components/MedscanWordmark";
 import {
   DEFAULT_MONITORED_PERSON_ID,
   MONITORED_PERSON_STORAGE_KEY,
@@ -112,7 +113,7 @@ export default function MonitoringScreen({ navigation }) {
               <LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}>
                 <MaterialCommunityIcons name="pulse" size={23} color="white"/>
               </LinearGradient>
-              <Text style={styles.brandName}>MEDSCAN</Text>
+              <MedscanWordmark size={18} dark={colors.primary} light={colors.primaryMedium} />
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={() => navigation.navigate("Notifications")} style={styles.bell}>
               <MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/>
@@ -307,7 +308,6 @@ const createStyles = (colors) => StyleSheet.create({
   brandRow: { flexDirection:"row", alignItems:"center", justifyContent:"space-between", marginBottom:27 },
   brand: { flexDirection:"row", alignItems:"center", gap:10 },
   brandMark: { width:40, height:40, borderRadius:13, alignItems:"center", justifyContent:"center" },
-  brandName: { fontFamily, color:colors.primary, fontSize:17, fontWeight:"700", letterSpacing:-0.5 },
   bell: { width:42, height:42, borderRadius:16, backgroundColor:colors.surface, alignItems:"center", justifyContent:"center" },
   heroTitle: { fontFamily, fontSize:29, fontWeight:"700", letterSpacing:-1, color:colors.text },
   heroSubtitle: { fontFamily, color:colors.text, opacity:0.8, fontSize:14, lineHeight:21, marginTop:6, maxWidth:460 },

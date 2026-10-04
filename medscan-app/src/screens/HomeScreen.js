@@ -12,6 +12,7 @@ import BottomTab from "../components/BottomTab";
 import ActionRow from "../components/ActionRow";
 import { useAuth } from "../context/AuthContext";
 import { fontFamily } from "../constants/theme";
+import MedscanWordmark from "../components/MedscanWordmark";
 import { demoVitals } from "../utils/demoVitals";
 
 const metrics = [
@@ -33,7 +34,7 @@ export default function HomeScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, desktop && desktopContent]}>
         <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.homeHero, desktop && {borderRadius:28}]}>
           <HeaderArtwork dark={isDark} />
-          <View style={styles.brandRow}><View style={styles.brand}><LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}><MaterialCommunityIcons name="pulse" size={23} color="white"/></LinearGradient><Text style={styles.brandName}>MEDSCAN</Text></View><TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={()=>navigation.navigate("Notifications")} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/></TouchableOpacity></View>
+          <View style={styles.brandRow}><View style={styles.brand}><LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}><MaterialCommunityIcons name="pulse" size={23} color="white"/></LinearGradient><MedscanWordmark size={18} dark={colors.primary} light={colors.primaryMedium} /></View><TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={()=>navigation.navigate("Notifications")} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/></TouchableOpacity></View>
           <Text style={styles.greeting}>{`Olá, ${firstName}`}</Text><Text style={styles.subtitle}>Seu cuidado em um só lugar</Text>
           <View style={styles.healthBadge}><View style={styles.healthDot}/><Text style={styles.healthText}>Seu espaço de saúde</Text></View>
         </LinearGradient>
@@ -95,7 +96,6 @@ const createStyles = (colors) => StyleSheet.create({
   brandRow: { flexDirection:"row", alignItems:"center", justifyContent:"space-between", marginBottom:27 },
   brand: { flexDirection:"row", alignItems:"center", gap:10 },
   brandMark: { width:40, height:40, borderRadius:13, alignItems:"center", justifyContent:"center" },
-  brandName: { fontFamily, color:colors.primary, fontSize:17, fontWeight:"700", letterSpacing:-.5 },
   bell: { width:42, height:42, borderRadius:16, backgroundColor:colors.surface, alignItems:"center", justifyContent:"center" },
   greeting: { fontFamily, fontSize:29, fontWeight:"700", letterSpacing:-1, color:colors.text },
   subtitle: { fontFamily, color:colors.text, opacity:0.8, fontSize:14, marginTop:6 },

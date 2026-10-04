@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { fontFamily } from "../constants/theme";
 import { authColors } from "../constants/authTheme";
+import MedscanWordmark from "./MedscanWordmark";
 
 const medicalBackground = require("../../assets/auth-medical.png");
 
@@ -27,7 +28,7 @@ export default function AuthLayout({ title, accent, subtitle, eyebrow = "BEM-VIN
           <View style={styles.navigation}>
             <View style={styles.brand}>
               <MaterialCommunityIcons name="pulse" size={30} color={authColors.primary} />
-              <Text style={styles.brandName}>medscan<Text style={styles.brandDot}>.</Text></Text>
+              <MedscanWordmark size={27} dark={authColors.text} light={authColors.primary} />
             </View>
             <Pressable accessibilityRole="button"
               accessibilityLabel={welcome ? "Entrar na minha conta" : "Voltar ao início"}
@@ -73,8 +74,6 @@ const styles = StyleSheet.create({
   desktopContent: { paddingHorizontal: "7%", paddingTop: 36, paddingBottom: 28 },
   navigation: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16 },
   brand: { flexDirection: "row", gap: 10, alignItems: "center" },
-  brandName: { fontFamily, fontSize: 27, lineHeight: 34, fontWeight: "700", letterSpacing: -1.2, color: authColors.text },
-  brandDot: { color: authColors.primary },
   navLink: { minHeight: 44, paddingHorizontal: 12, gap: 12, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(4,22,25,0.48)", borderBottomWidth: 1, borderBottomColor: authColors.border },
   activeLink: { borderBottomColor: authColors.primary, opacity: 0.8 },
   navLabel: { fontFamily, fontSize: 13, color: authColors.text, fontWeight: "600" },

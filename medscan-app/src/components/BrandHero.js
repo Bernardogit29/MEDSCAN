@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fontFamily } from "../constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { HeaderArtwork } from "./HomeArtwork";
+import MedscanWordmark from "./MedscanWordmark";
 
 export default function BrandHero({ title, subtitle, badge, onBack, onNotifications, desktop = false }) {
   const { colors, styles, isDark } = useAppTheme(createStyles);
@@ -16,7 +17,7 @@ export default function BrandHero({ title, subtitle, badge, onBack, onNotificati
       <View style={styles.brandRow}>
         <View style={styles.brand}>
           {onBack ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={onBack} style={styles.brandIcon}><MaterialCommunityIcons name="arrow-left" size={21} color="white" /></TouchableOpacity> : <View style={styles.brandIcon}><MaterialCommunityIcons name="pulse" size={21} color="white" /></View>}
-          <Text style={styles.brandName}>MEDSCAN</Text>
+          <MedscanWordmark size={18} dark={colors.primary} light={colors.primaryMedium} />
         </View>
         {onNotifications ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={onNotifications} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={21} color={colors.primary} /></TouchableOpacity> : null}
       </View>
@@ -37,7 +38,6 @@ const createStyles = (colors) => StyleSheet.create({
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 28 },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
   brandIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: "#076457", alignItems: "center", justifyContent: "center" },
-  brandName: { color: colors.primary, fontFamily, fontWeight: "700", fontSize: 17, letterSpacing: -0.4 },
   bell: { width: 42, height: 42, borderRadius: 16, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   title: { color: colors.text, fontFamily, fontWeight: "700", fontSize: 29, letterSpacing: -1 },
   subtitle: { color: colors.text, opacity: 0.8, fontFamily, fontSize: 14, lineHeight: 21, marginTop: 6 },

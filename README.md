@@ -182,15 +182,15 @@ Registros antigos, criados com valores de demonstração e sem `source: recorded
 
 ### Diagnóstico e recuperação da IA
 
-`GEMINI_MODEL` define o modelo principal. Após um erro HTTP 500/502/503/504, a próxima tentativa usa `GEMINI_FALLBACK_MODEL` (padrão: `gemini-3.7-flash`), dentro do mesmo limite total de três chamadas e 120 segundos. Defina a alternativa como vazia para repetir apenas o principal. O mesmo relato, imagem e esquema são mantidos; o resultado registra o modelo que efetivamente respondeu. Somente respostas completas são salvas. Essa recuperação não garante disponibilidade do provedor.
+`GEMINI_MODEL` define o modelo principal. Quando não há reserva externa configurada, erros HTTP 500/502/503/504 acionam `GEMINI_FALLBACK_MODEL` (padrão: `gemini-3.7-flash`) em até três chamadas e 120 segundos. Defina a alternativa como vazia para repetir apenas o principal. O mesmo relato, imagem e esquema são mantidos; o resultado registra o modelo que efetivamente respondeu. Somente respostas completas são salvas.
 
-No fluxo exclusivo Gemini, erros de cota retornam HTTP 429 e `AI_QUOTA_EXCEEDED`, sem alternar modelos. Com Groq habilitada para texto, há uma tentativa no provedor independente antes de devolver a falha. Configuração, acesso negado, indisponibilidade e timeout têm códigos próprios. Consulte cota/saldo para 429 e modelo/chave para erros de configuração; repetir chamadas não corrige esses problemas.
+No fluxo exclusivo Gemini, erros de cota retornam HTTP 429 e `AI_QUOTA_EXCEEDED`, sem alternar modelos do mesmo projeto. Com reservas configuradas, erros de cota, saldo ou indisponibilidade fazem a chamada avançar para o próximo provedor independente. O limite total é de 120 segundos, até 60 segundos por chamada. Falhas de credenciais do Gemini, resposta incompleta e timeout ambíguo não acionam reservas. Consulte cota/saldo para 429 e modelo/chave para erros de configuração.
 
 `node scripts/diagnose-ai.cjs` consulta o modelo configurado e a lista do provedor sem imprimir credenciais. A listagem não garante que a geração funcione. `--generate` faz uma chamada curta; `--analysis` valida o formato completo com um relato fictício e sem gravação no banco. `--model=NOME` seleciona o modelo somente para o processo de diagnóstico. Essas duas opções usam a cota da API.
 
 `node scripts/check-public-ai.cjs` usa apenas a conta QA previamente criada por `smoke-auth.cjs`, com um relato fictício; uma análise bem-sucedida fica registrada nessa conta. Nunca usa a sessão pessoal do navegador.
 
-### Groq como reserva de texto
+### Provedores de reserva
 
 Configure somente no backend (`medscan-api/.env` local ou Environment do serviço da API):
 
@@ -198,15 +198,23 @@ Configure somente no backend (`medscan-api/.env` local ou Environment do serviç
 GROQ_FALLBACK_ENABLED=true
 GROQ_API_KEY=
 GROQ_MODEL=openai/gpt-oss-120b
+MISTRAL_FALLBACK_ENABLED=true
+MISTRAL_API_KEY=
+MISTRAL_MODEL=mistral-small-latest
+OPENROUTER_FALLBACK_ENABLED=true
+OPENROUTER_API_KEY=
+COHERE_FALLBACK_ENABLED=true
+COHERE_API_KEY=
+COHERE_MODEL=command-a-03-2025
 ```
 
-Crie a chave em https://console.groq.com/keys e preencha `GROQ_API_KEY`. Mantenha a conta Groq no plano Free para não habilitar cobrança por uso. A integração não altera o plano da conta e não consegue garantir gratuidade se ela estiver em um plano pago. Consulte [limites atuais](https://console.groq.com/docs/rate-limits); relatos longos e várias análises seguidas podem exceder a cota. Nunca use `EXPO_PUBLIC_*` para a chave. Reinicie a API após editar o `.env`.
+Crie chaves no [Groq Console](https://console.groq.com/keys), [Mistral Studio](https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key), [OpenRouter](https://openrouter.ai/settings/keys) e [Cohere](https://dashboard.cohere.com/api-keys). Preencha apenas as que desejar usar. Cada reserva exige chave e flag `true`; uma chave vazia a desativa. Mantenha as contas nos respectivos planos gratuitos e confira os limites no painel de cada serviço. A integração não altera o plano de cobrança da conta. Nunca use `EXPO_PUBLIC_*` para chaves; reinicie a API após editar o `.env` ou as variáveis do Render.
 
-Com chave e flag true, relatos **sem imagem** usam Gemini primeiro e uma única tentativa Groq após HTTP 429/500/502/503/504, dentro de 120s totais e até 60s por chamada. Essa alternativa substitui as retentativas Gemini para esse relato. Sucesso do principal não chama a reserva. Erros de configuração, respostas inválidas ou timeout ambíguo não acionam Groq. Se a Groq também retornar 429, a solicitação termina sem novas tentativas. Sem chave ou com flag false, o fluxo anterior Gemini continua.
+Para texto, a ordem é Gemini → Groq → Mistral → OpenRouter → Cohere. Para imagens, é Gemini → Mistral; o anexo não é descartado para chamar um modelo só de texto. Uma resposta válida encerra a sequência. HTTP 429, 402 ou 500/502/503/504 passa para a próxima reserva configurada. OpenRouter fica preso a `openrouter/free`, que seleciona um modelo gratuito disponível; qualidade e disponibilidade podem variar.
 
-Exceção à tentativa única: se o Groq devolver HTTP 400 com falha explícita de geração JSON (`json_validate_failed` ou `structured_generation_failed`), o serviço permite uma nova geração no Groq dentro dos mesmos 120s. Não repete erros desconhecidos, de configuração ou de cota. Se persistir, retorna `AI_OUTPUT_FORMAT`; conteúdo parcial não é aproveitado. Os logs registram somente provedor, modelo, status e categoria segura, nunca a mensagem bruta do provedor.
+Se uma reserva devolver HTTP 400 com falha explícita de geração JSON (`json_validate_failed` ou `structured_generation_failed`), o serviço permite uma nova geração no mesmo provedor e depois tenta a reserva seguinte, se houver. Respostas parciais, truncadas ou fora do esquema são recusadas. Os logs registram somente provedor, modelo, status e categoria segura, nunca a mensagem bruta do provedor.
 
-O modelo padrão é de texto: análises com imagens permanecem no Gemini, preservando o anexo, sem análise parcial silenciosa. O Groq recebe as mesmas instruções, relato completo e JSON Schema, com saída limitada a 3072 tokens; respostas truncadas ou incompletas são recusadas. O prontuário guarda um único resultado completo com `source: groq` e modelo real, preservando os vínculos do relato. O modelo é configurável, mas precisa suportar [JSON Schema estrito](https://console.groq.com/docs/structured-outputs).
+Todas as reservas recebem as mesmas instruções e o relato completo. O resultado salvo no prontuário inclui `source` e o modelo ou rota configurada; `openrouter/free` pode selecionar um modelo diferente em cada chamada. O modelo Groq deve suportar [JSON Schema estrito](https://console.groq.com/docs/structured-outputs); o Mistral Small aceita [imagem](https://docs.mistral.ai/studio/conversations/vision) e saída estruturada. O OpenRouter distribui o relato a provedores parceiros conforme a rota gratuita. A chamada exige suporte a JSON Schema e [bloqueia coleta de dados pelo provedor](https://openrouter.ai/docs/guides/get-started/sovereign-ai); ainda assim, avalie as políticas de dados antes de enviar informações de saúde reais por essa reserva.
 
 Testes automatizados simulam os provedores e não fazem chamadas reais. Após configurar a chave, ainda é necessário validar qualidade em português, acesso e cota com relatos fictícios antes de usar na feira. Publicação do backend é necessária para a mudança chegar ao app no Render.
 
