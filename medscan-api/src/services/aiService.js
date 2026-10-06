@@ -184,7 +184,7 @@ async function requestCohere({ apiKey, model, parts, timeout }) {
   return parseReport(text);
 }
 
-async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }) {
+async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }, retryClock = {}) {
   if (typeof symptoms !== "string" || symptoms.length > 12000) {
     throw providerError("Descreva os sintomas em até 12.000 caracteres.", 400);
   }
@@ -221,6 +221,11 @@ async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }
   const targets = reserves.length ? [primary, ...reserves] : [primary, secondary, secondary];
   let targetIndex = 0;
   let retriedJsonOutput = false;
+  const now = retryClock.now || Date.now;
+  const quotaRetries = [];
+  const queuedProviders = new Set();
+  let recoveringQuota = false;
+  let nextDelay = 1000;
   const parts = [{ text: JSON.stringify({
     relato: symptoms.trim() || "Imagem enviada sem descrição.", imagemAnexada: Boolean(imagePart),
     complementos: followUpContext.map(turn => ({
@@ -239,21 +244,41 @@ async function analyzeMedicalData({ symptoms = "", image, followUpContext = [] }
       if (target.provider === "cohere") return requestCohere({ ...target, parts, timeout });
       return requestReserve({ ...target, parts, timeout });
     }, {
-      maxAttempts: targets.length * 2,
+      ...retryClock,
+      maxAttempts: targets.length * 3 + 2,
+      retryDelay: () => nextDelay,
       shouldRetry: error => {
         const status = error.response?.status;
         const reason = providerFailureReason(error);
+        nextDelay = 1000;
+        if (status === 429 && !queuedProviders.has(respondingProvider)) {
+          queuedProviders.add(respondingProvider);
+          const header = error.response?.headers?.['retry-after'];
+          const seconds = Number(header);
+          const requestedDelay = header == null ? 10000 : Number.isFinite(seconds)
+            ? seconds * 1000 : Date.parse(header) - now();
+          quotaRetries.push({ target: targets[targetIndex], readyAt: now() + Math.max(10000, Number.isFinite(requestedDelay) ? requestedDelay : 10000) });
+        }
         if (status === 400 && reason === "generated_json_invalid" && respondingProvider !== "gemini" && !retriedJsonOutput) {
           retriedJsonOutput = true;
           return true;
         }
-        if (targetIndex >= targets.length - 1) return false;
-        const next = targets[targetIndex + 1];
-        const independent = next.provider !== respondingProvider;
-        if ([429, 402].includes(status) && !independent) return false;
+        const next = !recoveringQuota && targets[targetIndex + 1];
+        const independent = next && next.provider !== respondingProvider;
         if (![429, 402, 500, 502, 503, 504].includes(status) &&
             !(independent && status === 400 && ["generated_json_invalid", "unsupported_response_format"].includes(reason))) return false;
-        targetIndex += 1;
+        if (next && (![429, 402].includes(status) || independent)) {
+          targetIndex += 1;
+        } else {
+          // One additional pass over rate-limited providers; never resubmit the saved report.
+          quotaRetries.sort((a, b) => a.readyAt - b.readyAt);
+          const pending = quotaRetries.shift();
+          if (!pending) return false;
+          recoveringQuota = true;
+          targets.push(pending.target);
+          targetIndex = targets.length - 1;
+          nextDelay = Math.max(1000, pending.readyAt - now());
+        }
         retriedJsonOutput = false;
         return true;
       }

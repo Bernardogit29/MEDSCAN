@@ -6,6 +6,7 @@ async function withProviderRetry(request, {
   sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
   now = Date.now,
   maxAttempts = 3,
+  retryDelay = (_error, attempt) => Math.min(1000 * (2 ** attempt), 8000),
   shouldRetry = error => TRANSIENT_STATUSES.has(error.response?.status)
 } = {}) {
   const deadline = now() + TOTAL_TIMEOUT_MS;
@@ -15,8 +16,9 @@ async function withProviderRetry(request, {
     try {
       return await request(timeout, attempt);
     } catch (error) {
-      const delay = 1000 * (2 ** attempt);
-      if (!shouldRetry(error, attempt) || attempt === maxAttempts - 1 || deadline - now() <= delay) throw error;
+      if (attempt === maxAttempts - 1 || !shouldRetry(error, attempt)) throw error;
+      const delay = Math.max(0, retryDelay(error, attempt));
+      if (deadline - now() <= delay) throw error;
       await sleep(delay);
     }
   }

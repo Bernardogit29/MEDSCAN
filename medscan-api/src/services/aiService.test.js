@@ -1,7 +1,11 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const axios = require('axios');
-const { analyzeMedicalData, validateAnalysis } = require('./aiService');
+const { analyzeMedicalData: runAnalysis, validateAnalysis } = require('./aiService');
+let time = 0;
+let delays = [];
+const retryClock = { now: () => time, sleep: async ms => { delays.push(ms); time += ms; } };
+const analyzeMedicalData = input => runAnalysis(input, retryClock);
 const originalPost = axios.post;
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_MODEL;
@@ -11,7 +15,7 @@ const reserveKeys = ['GROQ_API_KEY', 'GROQ_MODEL', 'GROQ_FALLBACK_ENABLED',
   'OPENROUTER_API_KEY', 'OPENROUTER_FALLBACK_ENABLED',
   'COHERE_API_KEY', 'COHERE_MODEL', 'COHERE_FALLBACK_ENABLED'];
 const originalReserves = Object.fromEntries(reserveKeys.map(key => [key, process.env[key]]));
-beforeEach(() => { for (const key of reserveKeys) delete process.env[key]; });
+beforeEach(() => { time = 0; delays = []; for (const key of reserveKeys) delete process.env[key]; });
 afterEach(() => {
   axios.post = originalPost;
   if (originalKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = originalKey;
@@ -111,13 +115,13 @@ test('server failure switches to configured fallback with identical payload and 
   assert.equal(result.model, 'backup');
 });
 
-test('quota, inaccessible models and denied keys do not trigger fallback', async () => {
+test('quota retries the same provider once; inaccessible models and denied keys stop', async () => {
   process.env.GEMINI_API_KEY = 'test-only'; process.env.GEMINI_FALLBACK_MODEL = 'backup';
   for (const [status, code] of [[429, 'AI_QUOTA_EXCEEDED'], [404, 'AI_MODEL_UNAVAILABLE'], [403, 'AI_ACCESS_DENIED']]) {
     let calls = 0;
     axios.post = async () => { calls++; throw { response: { status } }; };
     await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.code === code);
-    assert.equal(calls, 1);
+    assert.equal(calls, status === 429 ? 2 : 1);
   }
 });
 
@@ -205,20 +209,53 @@ test('Gemini quota uses independent Groq once without retrying exhausted provide
   assert.equal(urls[1], 'https://api.groq.com/openai/v1/chat/completions');
 });
 
-test('both providers at quota stop after one request each', async () => {
+test('both providers at quota stop after one recovery attempt each', async () => {
   enableGroq(); let calls = 0;
   axios.post = async () => { calls++; throw { response: { status: 429 } }; };
   await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.code === 'AI_QUOTA_EXCEEDED');
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
 });
 
-test('Groq is called once only; its errors remain explicit', async () => {
+test('quota recovery succeeds automatically after reserves are exhausted', async () => {
+  enableGroq(); const calls = [];
+  axios.post = async (url, body) => {
+    calls.push({ url, body, time });
+    if (calls.length <= 2) throw { response: { status: 429 } };
+    return geminiReply();
+  };
+  const result = await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.equal(result.source, 'gemini');
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].time, 10000);
+  assert.deepEqual(calls[2].body, calls[0].body);
+});
+
+test('Retry-After delays recovery but never delays an independent reserve', async () => {
+  enableGroq(); const calls = [];
+  axios.post = async (url) => {
+    calls.push({ url, time });
+    if (calls.length <= 2) throw { response: { status: 429, headers: { 'retry-after': '30' } } };
+    return geminiReply();
+  };
+  await analyzeMedicalData({ symptoms: 'relato fictício' });
+  assert.deepEqual(calls.map(call => call.time), [0, 1000, 30000]);
+});
+
+test('Retry-After beyond the total budget stops without waiting indefinitely', async () => {
+  process.env.GEMINI_API_KEY = 'test-only'; let calls = 0;
+  axios.post = async () => { calls++; throw { response: { status: 429, headers: { 'retry-after': '180' } } }; };
+  await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.code === 'AI_QUOTA_EXCEEDED');
+  assert.equal(calls, 1);
+  assert.deepEqual(delays, []);
+});
+
+test('Groq quota gets one recovery attempt; other exhausted errors remain explicit', async () => {
   enableGroq();
   for (const [status, code] of [[503, 'AI_UNAVAILABLE'], [429, 'AI_QUOTA_EXCEEDED'], [401, 'AI_ACCESS_DENIED']]) {
     let calls = 0;
     axios.post = async () => { throw { response: { status: ++calls === 1 ? 503 : status } }; };
     await assert.rejects(analyzeMedicalData({ symptoms: 'relato fictício' }), error => error.code === code);
-    assert.equal(calls, 2);
+    assert.equal(calls, status === 429 ? 3 : 2);
   }
 });
 
@@ -345,6 +382,29 @@ test('Mistral receives an image when Gemini is unavailable', async () => {
     assert.match(calls[1].url, /api\.mistral\.ai/);
     assert.equal(calls[1].body.messages[1].content[1].image_url, 'data:image/png;base64,ZmljdGl0aW91cw==');
     assert.equal(result.source, 'mistral'); assert.equal(result.imageReceived, true);
+  } finally { fs.stat = stat; fs.readFile = read; }
+});
+
+test('image recovery preserves the attachment and skips text-only reserves', async () => {
+  enableGroq();
+  process.env.MISTRAL_FALLBACK_ENABLED = 'true'; process.env.MISTRAL_API_KEY = 'mistral-test';
+  const fs = require('node:fs/promises'); const stat = fs.stat; const read = fs.readFile;
+  fs.stat = async () => ({ size: 12 }); fs.readFile = async () => 'ZmljdGl0aW91cw==';
+  try {
+    const calls = [];
+    axios.post = async (url, body) => {
+      calls.push({ url, body });
+      if (calls.length <= 3) throw { response: { status: 429 } };
+      return groqReply();
+    };
+    const result = await analyzeMedicalData({ symptoms: 'relato fictício', image: { path: 'mock-only', mimetype: 'image/png' } });
+    assert.equal(calls.length, 4);
+    assert.match(calls[1].url, /api\.mistral\.ai/);
+    assert.deepEqual(calls[0], calls[2]);
+    assert.deepEqual(calls[1], calls[3]);
+    assert.equal(calls[3].body.messages[1].content[1].image_url, 'data:image/png;base64,ZmljdGl0aW91cw==');
+    assert.equal(result.source, 'mistral');
+    assert.equal(result.imageReceived, true);
   } finally { fs.stat = stat; fs.readFile = read; }
 });
 
