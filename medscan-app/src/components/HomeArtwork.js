@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { AccessibilityInfo, AppState, Platform, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Path, Rect, G, Circle } from 'react-native-svg';
 
@@ -53,8 +54,9 @@ export function VitalSparkline({ color, bars = false, pulse = false, active = tr
     </Svg>
   </View>;
 }
-export function RecordArtwork({ active = false }) {
-  const phase = useDemoMotion(active);
+export function RecordArtwork({ active = true }) {
+  const focused = useIsFocused();
+  const phase = useDemoMotion(active && focused);
   const sway = Math.sin(phase * Math.PI * 2);
   const lift = -8 * (1 - Math.cos(phase * Math.PI * 2)) / 2;
   const id=`paper${useId().replace(/:/g,'')}`;
@@ -66,8 +68,9 @@ export function RecordArtwork({ active = false }) {
     </Svg>
   </View>;
 }
-export function HeaderArtwork({ dark, active = false }) {
-  const phase = useDemoMotion(active);
+export function HeaderArtwork({ dark, active = true }) {
+  const focused = useIsFocused();
+  const phase = useDemoMotion(active && focused);
   const sway = Math.sin(phase * Math.PI * 2);
   const lift = -10 * (1 - Math.cos(phase * Math.PI * 2)) / 2;
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{position:'absolute',right:-32,bottom:-45,width:210,height:230,opacity: dark ? 0.5 : 0.8}}>
