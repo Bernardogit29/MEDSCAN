@@ -1,8 +1,8 @@
 import { careRoutes } from "../utils/careRecords";
 import { useAppTheme } from "../context/ThemeContext";
 import { useDesktop, desktopPage, desktopContent } from "../utils/responsive";
-import React from "react";
-import { useIsFocused } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -22,10 +22,35 @@ const metrics = [
   { title: "Atividade", icon: "shoe-print", unit: "passos", value: demoVitals.steps, color: "#23A78A", darkColor: "#77DFC4", bars: true }
 ];
 
+const welcomePhrases = [
+  "Seu cuidado em um só lugar",
+  "Um novo dia para cuidar de você",
+  "Pequenos cuidados, todos os dias",
+  "Sua saúde merece atenção e carinho",
+  "Cada passo conta no seu cuidado",
+  "Seu bem-estar começa com você",
+  "Mais clareza para cuidar da sua saúde",
+  "Hoje é um bom dia para se cuidar"
+];
+let lastWelcomePhrase = -1;
+function nextWelcomePhrase() {
+  // Keep the previous phrase across web reloads, even when storage is blocked.
+  try {
+    const saved = globalThis.sessionStorage?.getItem("medscan:welcome-phrase");
+    if (saved !== null && saved !== undefined) lastWelcomePhrase = Number(saved);
+  } catch {}
+  const candidates = welcomePhrases.map((_, index) => index).filter(index => index !== lastWelcomePhrase);
+  lastWelcomePhrase = candidates[Math.floor(Math.random() * candidates.length)];
+  try { globalThis.sessionStorage?.setItem("medscan:welcome-phrase", String(lastWelcomePhrase)); } catch {}
+  return welcomePhrases[lastWelcomePhrase];
+}
+
 export default function HomeScreen({ navigation }) {
   const { colors, styles, isDark } = useAppTheme(createStyles);
   const desktop = useDesktop();
   const focused = useIsFocused();
+  const [welcomePhrase, setWelcomePhrase] = useState(welcomePhrases[0]);
+  useFocusEffect(useCallback(() => { setWelcomePhrase(nextWelcomePhrase()); }, []));
   const { user } = useAuth();
   const firstName = user?.name?.split(" ")[0] || "bem-vindo";
   const date = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
@@ -33,9 +58,9 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={[styles.safe, desktop && desktopPage]} edges={["top", "left", "right"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, desktop && desktopContent]}>
         <LinearGradient colors={[colors.heroStart, colors.heroEnd]} start={{x:0,y:0}} end={{x:1,y:1}} style={[styles.homeHero, desktop && {borderRadius:28}]}>
-          <HeaderArtwork dark={isDark} />
+          <HeaderArtwork dark={isDark} active={focused} />
           <View style={styles.brandRow}><View style={styles.brand}><LinearGradient colors={["#15B497", "#076457"]} style={styles.brandMark}><MaterialCommunityIcons name="pulse" size={23} color="white"/></LinearGradient><MedscanWordmark size={18} dark={colors.primary} light={colors.primaryMedium} /></View><TouchableOpacity accessibilityRole="button" accessibilityLabel="Notificações" onPress={()=>navigation.navigate("Notifications")} style={styles.bell}><MaterialCommunityIcons name="bell-outline" size={23} color={colors.primary}/></TouchableOpacity></View>
-          <Text style={styles.greeting}>{`Olá, ${firstName}`}</Text><Text style={styles.subtitle}>Seu cuidado em um só lugar</Text>
+          <Text style={styles.greeting}>{`Olá, ${firstName}`}</Text><Text style={styles.subtitle}>{welcomePhrase}</Text>
           <View style={styles.healthBadge}><View style={styles.healthDot}/><Text style={styles.healthText}>Seu espaço de saúde</Text></View>
         </LinearGradient>
 
@@ -52,7 +77,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.eyebrow}>PRONTUÁRIO INTELIGENTE</Text>
             <Text style={styles.cardTitle}>Seu histórico, mais claro.</Text>
             <Text style={styles.cardCopy}>Relatos e exames organizados para acompanhar sua evolução.</Text>
-            <View style={styles.recordArt}><RecordArtwork/></View>
+            <View style={styles.recordArt}><RecordArtwork active={focused}/></View>
             <View style={styles.cta}><Text style={styles.ctaText}>Ver prontuário</Text><MaterialCommunityIcons name="arrow-top-right" size={18} color={colors.onCta} /></View>
           </TouchableOpacity>
           {desktop ? <View style={styles.desktopQuick}><Text style={styles.sectionTitle}>Como podemos ajudar?</Text><Text style={styles.metricNote}>Escolha por onde começar seu cuidado.</Text><ActionRow title="Conversar com a IA" subtitle="Conte o que está sentindo" icon="creation" onPress={() => navigation.navigate("Analyze", { type: "symptoms" })} /><ActionRow title="Adicionar exame" subtitle="Organize um novo documento" icon="file-plus-outline" color={colors.info} onPress={() => navigation.navigate("Analyze", { type: "exam" })} /></View> : null}
