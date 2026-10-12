@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { fontFamily } from "../constants/theme";
 import MedscanWordmark from "../components/MedscanWordmark";
 import { demoVitals } from "../utils/demoVitals";
+import DailyCarePanel from "../components/DailyCarePanel";
 
 const metrics = [
   { title: "Glicose", icon: "water-outline", unit: "mg/dL", value: demoVitals.glucose, color: "#199D7C", darkColor: "#70DCB4" },
@@ -65,6 +66,7 @@ export default function HomeScreen({ navigation }) {
         </LinearGradient>
 
         <View style={styles.body}>
+          <DailyCarePanel navigation={navigation}/>
           <Text style={styles.sectionTitle}>Meu cuidado</Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {[["medication", "pill", "Medicamentos"], ["appointment", "calendar-clock", "Consultas"], ["exams", "flask-outline", "Exames"]].map(([section, icon, title]) => <TouchableOpacity key={section} accessibilityRole="button" accessibilityLabel={title} onPress={() => section === "exams" ? navigation.navigate("History", { section: "exams", personId: "self", revision: Date.now() }) : navigation.navigate(careRoutes[section], { section, personId: "self", revision: Date.now() })} style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18 }}><MaterialCommunityIcons name={icon} size={25} color={colors.primary}/><Text style={{ color: colors.text, fontFamily, fontSize: 11, fontWeight: "600" }}>{title}</Text></TouchableOpacity>)}

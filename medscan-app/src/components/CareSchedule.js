@@ -8,9 +8,10 @@ import { calendarDate, monthCells, shiftDay, shiftMonth } from "../utils/careCal
 
 const weekdays = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
 
-export default function CareSchedule({ kind, records, doses, onTaken, onEdit, busy, unavailable=false }) {
+export default function CareSchedule({ kind, records, doses, onTaken, onEdit, busy, unavailable=false, initialDate }) {
   const { colors, styles } = useAppTheme(createStyles);
-  const [selected,setSelected] = useState(localDate), [period,setPeriod] = useState(localDate);
+  const startDate = initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) && localDate(calendarDate(initialDate)) === initialDate ? initialDate : localDate();
+  const [selected,setSelected] = useState(startDate), [period,setPeriod] = useState(startDate);
   const appointments = kind === "appointment";
   const currentDate = calendarDate(selected);
   const visibleDates = appointments ? monthCells(period) : Array.from({length:7},(_,index)=>shiftDay(period,index));

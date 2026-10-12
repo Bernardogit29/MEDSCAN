@@ -110,7 +110,7 @@ export default function CareScreen({ navigation, route }) {
       <Text style={styles.note}>Até 1.000 registros de cuidado e tomadas, mais as análises e até 100 medições recentes. Registros arquivados permanecem na linha do tempo.</Text>
     </>:section==="chart" ? <Card><MeasurementChart records={measurements} onRegister={()=>navigation.navigate("History",{personId,openMeasurement:true,revision:Date.now()})}/></Card>:<>
       <Button title={`Adicionar ${careKinds[section]?.singular || "registro"}`} icon="plus" disabled={loading || Boolean(errors.care)} onPress={()=>edit(null)}/>
-      {scheduledSection?<CareSchedule key={scope+section} kind={section} records={records} doses={doses} onTaken={taken} onEdit={edit} busy={busy} unavailable={loading || Boolean(errors.care)}/>:null}
+      {scheduledSection?<CareSchedule key={`${scope+section}:${route.params?.revision || ""}`} initialDate={route.params?.agendaDate} kind={section} records={records} doses={doses} onTaken={taken} onEdit={edit} busy={busy} unavailable={loading || Boolean(errors.care)}/>:null}
       {scheduledSection?<TouchableOpacity accessibilityRole="button" accessibilityState={{expanded:showAllRecords}} onPress={()=>setShowAllRecords(value=>!value)} style={styles.recordsToggle}><Text style={styles.badge}>{showAllRecords?"Fechar lista de registros":"Gerenciar todos os registros"}</Text><MaterialCommunityIcons name={showAllRecords?"chevron-up":"chevron-down"} size={20} color={colors.primary}/></TouchableOpacity>:null}
       {section==="vaccine" ? <VaccinationOverview records={records} unavailable={loading || Boolean(errors.care)}/>:null}
       {!scheduledSection || showAllRecords ? <>
