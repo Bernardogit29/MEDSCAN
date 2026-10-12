@@ -7,6 +7,7 @@ const schema = new mongoose.Schema({
   dose: String, times: [String], startDate: String, endDate: String,
   date: String, time: String, nextDate: String, location: String,
   reaction: String, severity: String, lot: String, notes: String,
+  professional: String, questions: String, documents: String, instructions: String,
   status: { type: String, default: "active" },
   archived: { type: Boolean, default: false }
 }, { timestamps: true });

@@ -14,6 +14,13 @@ function validateCare(body, kind) {
     output[field] = value;
   }
   if (!output.name) throw new Error("Informe o nome.");
+  if (kind === "appointment") {
+    for (const field of ["professional", "questions", "documents", "instructions"]) {
+      if (body[field] != null && typeof body[field] !== "string") throw new Error("Preencha a preparação da consulta com texto.");
+      output[field] = (body[field] || "").trim();
+      if (output[field].length > (field === "professional" ? 200 : 2000)) throw new Error("Um dos campos da consulta excede o tamanho permitido.");
+    }
+  }
   for (const field of ["date", "startDate", "endDate", "nextDate"]) {
     output[field] = body[field] || "";
     if (output[field] && !validDate(output[field])) throw new Error("Informe uma data válida no formato dia/mês/ano.");

@@ -20,16 +20,20 @@ import MeasurementChart from "../components/MeasurementChart";
 
 import VaccinationOverview from "../components/VaccinationOverview";
 import CareSchedule from "../components/CareSchedule";
+import { matchesRecord } from "../utils/recordSearch";
+import AppointmentNotes from "../components/AppointmentNotes";
 
 const sectionDescriptions = { medication: "Sua rotina de medicamentos, doses e horários.", allergy: "Substâncias e reações que merecem atenção.", vaccine: "Sua carteira pessoal, organizada e fácil de acompanhar.", appointment: "Seus próximos encontros de cuidado.", timeline: "Seu histórico de cuidado em ordem cronológica.", chart: "Acompanhe a evolução das suas medições." };
 const sections = { timeline:{ title:"Linha do tempo",icon:"timeline-clock-outline" }, ...careKinds, chart:{ title:"Gráfico",icon:"chart-line" } };
 const statuses = { medication:["active","paused"],allergy:["active","inactive"],vaccine:["administered","planned"],appointment:["scheduled","completed","cancelled"] };
-const emptyForm = kind => ({ kind,name:"",dose:"",times:"08:00",startDate:"",endDate:"",date:"",time:"",nextDate:"",location:"",reaction:"",severity:"",lot:"",notes:"",status:statuses[kind]?.[0] });
+const emptyForm = kind => ({ kind,name:"",dose:"",times:"08:00",startDate:"",endDate:"",date:"",time:"",nextDate:"",location:"",reaction:"",severity:"",lot:"",notes:"",professional:"",questions:"",documents:"",instructions:"",status:statuses[kind]?.[0] });
 export default function CareScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme(createStyles), desktop = useDesktop(), { user, token } = useAuth();
   const routeSection=Object.entries(careRoutes).find(([,name])=>name===route.name)?.[0] || (sections[route.params?.section] ? route.params.section : "timeline");
   const [section,setSection]=useState(routeSection), [personId,setPersonId]=useState(route.params?.personId || "self");
   const [showPeople,setShowPeople]=useState(false), [showAllRecords,setShowAllRecords]=useState(false);
+  const [search,setSearch]=useState("");
+  const openedRecord = useRef("");
   const scope = `${user?._id || user?.id || "guest"}:${personId}`;
   const scopeRef = useRef(scope); scopeRef.current = scope;
   useEffect(()=>{setForm(null);setActionError("");},[scope]);
@@ -56,8 +60,14 @@ export default function CareScreen({ navigation, route }) {
   },[user,token,personId,revision,section]));
   const title=sections[section]?.title || "Prontuário", selectedName=people.find(person=>person.id===personId)?.name || "Pessoa selecionada";
   const scheduledSection=["medication","appointment"].includes(section);
-  const listed=records.filter(record=>record.kind===section && Boolean(record.archived)===showArchived).sort((a,b)=>String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")));
-  const events=useMemo(()=>careTimeline(analyses,measurements,records,doses),[analyses,measurements,records,doses]).filter(event=>filter==="all" || event.kind===filter);
+  useEffect(()=>{setSearch("");},[scope,section]);
+  useEffect(()=>{
+    const key = `${scope}:${route.params?.revision}:${route.params?.openRecordId}`;
+    const record = !loading && records.find(item=>item._id===route.params?.openRecordId && (item.monitoredPersonId || "self")===personId);
+    if (record && openedRecord.current!==key) { openedRecord.current=key; edit(record); }
+  },[records,loading,scope,personId,route.params?.revision,route.params?.openRecordId]);
+  const listed=records.filter(record=>record.kind===section && Boolean(record.archived)===showArchived && matchesRecord(record,search)).sort((a,b)=>String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")));
+  const events=useMemo(()=>careTimeline(analyses,measurements,records,doses),[analyses,measurements,records,doses]).filter(event=>(filter==="all" || event.kind===filter) && matchesRecord({...event,...(event.analysis || event.record || {}),name:event.title,notes:[event.record?.notes,event.detail].filter(Boolean).join(" ")},search));
   function chip(label,selected,onPress,key=label){return <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{selected}} onPress={onPress} style={[styles.chip,selected && styles.chipActive]}><Text style={{color:selected?"white":colors.text,fontFamily,fontSize:12}}>{label}</Text></TouchableOpacity>;}
   function edit(record){setFormError("");setForm(record?{...emptyForm(record.kind),...record,times:(record.times || []).join(", "),...Object.fromEntries(["date","startDate","endDate","nextDate"].map(key=>[key,record[key]?displayDate(record[key]):""]))}:emptyForm(section));}
   async function save(){
@@ -101,6 +111,7 @@ export default function CareScreen({ navigation, route }) {
     {actionError?<Text accessibilityRole="alert" style={styles.error}>{actionError}</Text>:null}
     {section==="timeline" ? <>
       <Text style={styles.note}>Relatos, exames, medições, medicamentos, vacinas e consultas de {selectedName}. Datas futuras aparecem como planejamento. Horários locais do aparelho.</Text>
+      <Input label="Buscar na linha do tempo" icon="magnify" value={search} onChangeText={value=>{setSearch(value);setVisible(30);}} placeholder="Medicamento, exame, sintoma ou profissional"/>
       <ScrollView horizontal><View style={styles.row}>{[["all","Tudo"],["report","Relatos"],["exam","Exames"],["measurement","Medições"],["medication","Medicamentos"],["allergy","Alergias"],["vaccine","Vacinas"],["appointment","Consultas"]].map(([key,label])=>chip(label,filter===key,()=>{setFilter(key);setVisible(30);},key))}</View></ScrollView>
       {!loading && !events.length?<Text style={styles.note}>{Object.keys(errors).length?"Os registros não estão disponíveis agora.":"Nenhum evento nesta categoria. Seus novos registros aparecerão aqui."}</Text>:null}
       {events.slice(0,visible).map(event=><TouchableOpacity key={event.id} accessibilityRole={event.analysis || event.record || event.measurement ? "button" : undefined} disabled={!event.analysis && !event.record && !event.measurement} onPress={()=>{if(event.analysis)navigation.navigate("Result",{analysis:event.analysis,caseVersions:analyses});else if(event.record)edit(event.record);else if(event.measurement){setSection("chart");} }} style={styles.timelineItem}>
@@ -114,12 +125,14 @@ export default function CareScreen({ navigation, route }) {
       {scheduledSection?<TouchableOpacity accessibilityRole="button" accessibilityState={{expanded:showAllRecords}} onPress={()=>setShowAllRecords(value=>!value)} style={styles.recordsToggle}><Text style={styles.badge}>{showAllRecords?"Fechar lista de registros":"Gerenciar todos os registros"}</Text><MaterialCommunityIcons name={showAllRecords?"chevron-up":"chevron-down"} size={20} color={colors.primary}/></TouchableOpacity>:null}
       {section==="vaccine" ? <VaccinationOverview records={records} unavailable={loading || Boolean(errors.care)}/>:null}
       {!scheduledSection || showAllRecords ? <>
+      <Input label="Buscar nesta seção" icon="magnify" value={search} onChangeText={setSearch} placeholder="Nome ou informação do registro"/>
       <View style={styles.row}>{chip("Registros atuais",!showArchived,()=>setShowArchived(false))}{chip("Arquivados",showArchived,()=>setShowArchived(true))}</View>
       {!loading && !listed.length && !errors.care?<Text style={styles.note}>Nenhum registro {showArchived?"arquivado":"nesta seção"} para {selectedName}.</Text>:null}
       {listed.map(record=><Card key={record._id} style={{gap:10}}><View style={styles.row}><MaterialCommunityIcons name={careKinds[record.kind].icon} size={24} color={colors.primary}/><Text style={[styles.heading,{flex:1}]}>{record.name}</Text></View><Text style={styles.badge}>{careStatuses[record.status]}{record.archived?" · Arquivado":""}</Text>
         {record.dose?<Text style={styles.copy}>Dose: {record.dose}</Text>:null}{record.kind==="medication"?<Text style={styles.copy}>Todos os dias · {(record.times || []).join(" • ")}{record.startDate?`\nInício: ${displayDate(record.startDate)}`:""}{record.endDate?`\nTérmino: ${displayDate(record.endDate)}`:""}</Text>:null}
         {record.date?<Text style={styles.copy}>{displayDate(record.date)} {record.time || ""}</Text>:null}{record.location?<Text style={styles.copy}>{record.location}</Text>:null}{record.reaction?<Text style={styles.copy}>Reação relatada: {record.reaction}</Text>:null}{record.severity?<Text style={styles.copy}>Gravidade informada: {record.severity}</Text>:null}{record.lot?<Text style={styles.copy}>Lote: {record.lot}</Text>:null}{record.notes?<Text style={styles.note}>{record.notes}</Text>:null}
         <View style={styles.row}><Button title="Editar" variant="outline" disabled={Boolean(busy)} onPress={()=>edit(record)}/><Button title={record.archived?"Restaurar":"Arquivar"} variant="outline" disabled={Boolean(busy)} onPress={()=>update(record,{archived:!record.archived})}/></View>
+        {record.kind==="appointment"?<AppointmentNotes record={record}/>:null}
       </Card>)}
       </>:null}
     </>}
@@ -132,7 +145,7 @@ export default function CareScreen({ navigation, route }) {
       {form.kind==="medication"?<>{field("dose","Dose conforme a prescrição","Ex.: 1 comprimido de 10 mg")}{field("times","Horários diários, separados por vírgula","08:00, 20:00")}{field("startDate","Início (opcional)","DD/MM/AAAA")}{field("endDate","Término (opcional)","DD/MM/AAAA")}<Text style={styles.note}>Copie o esquema prescrito. Para uso eventual ou frequência diferente de diária, registre a orientação nas observações e mantenha a agenda pausada.</Text></>:null}
       {form.kind==="allergy"?<>{field("reaction","Reação relatada","Descreva o que aconteceu",true)}{field("severity","Gravidade informada (opcional)","Conforme orientação recebida")}{field("date","Data em que foi identificada (opcional)","DD/MM/AAAA")}</>:null}
       {form.kind==="vaccine"?<>{field("dose","Dose (opcional)","Ex.: 1ª dose ou reforço")}{field("date","Data recebida ou prevista","DD/MM/AAAA")}{field("nextDate","Próxima dose informada (opcional)","DD/MM/AAAA")}{field("lot","Lote (opcional)","Conforme a carteira")}{field("location","Posto ou clínica (opcional)","Local informado")}</>:null}
-      {form.kind==="appointment"?<>{field("date","Data da consulta","DD/MM/AAAA")}{field("time","Horário","HH:MM")}{field("location","Local ou endereço (opcional)","Clínica, posto ou atendimento online")}</>:null}
+      {form.kind==="appointment"?<>{field("professional","Profissional (opcional)","Nome de quem vai atender")}{field("date","Data da consulta","DD/MM/AAAA")}{field("time","Horário","HH:MM")}{field("location","Local ou endereço (opcional)","Clínica, posto ou atendimento online")}<Text style={styles.heading}>Antes da consulta</Text><Text style={styles.note}>Organize o que deseja conversar e levar. Use uma linha para cada item.</Text>{field("questions","Perguntas que quero fazer","Ex.: O que mudou nos meus exames?",true)}{field("documents","Documentos que preciso levar","Ex.: Exames recentes, receitas e documento de identificação",true)}<Text style={styles.heading}>Depois da consulta</Text>{field("instructions","Orientações recebidas","Registre o que o profissional orientou e os próximos passos.",true)}</>:null}
       <Text style={styles.heading}>Situação</Text><View style={styles.row}>{statuses[form.kind].map(status=>chip(careStatuses[status],form.status===status,()=>!saving && setForm(current=>({...current,status})),status))}</View>
       {field("notes","Observações (opcional)","Informações que deseja guardar",true)}
       {formError?<Text accessibilityRole="alert" style={styles.error}>{formError}</Text>:null}

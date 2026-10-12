@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { fontFamily } from "../constants/theme";
 import { getMonitoredPeople, MONITORED_PERSON_STORAGE_KEY } from "../utils/monitoredPeople";
 import { setStoredItem } from "../utils/storage";
+import RecordSearch from "../components/RecordSearch";
 
 function dateTime(value) {
   const date = new Date(value);
@@ -37,6 +38,8 @@ export default function HistoryScreen({ navigation, route }) {
   const [people, setPeople] = useState(() => getMonitoredPeople(user));
   const [personId, setPersonId] = useState(route.params?.personId || "self");
   const [history, setHistory] = useState([]);
+  const [careRecords, setCareRecords] = useState([]);
+  const [careError, setCareError] = useState("");
   const [preferences, setPreferences] = useState({ hideHealthPreviews: true });
   const [monitoring, setMonitoring] = useState({ records: [], events: [] });
   const [loading, setLoading] = useState(false);
@@ -59,11 +62,11 @@ export default function HistoryScreen({ navigation, route }) {
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    setPreferences({ hideHealthPreviews: true }); setHistory([]); setMonitoring({ records: [], events: [] }); setHistoryError(""); setMonitoringError("");
+    setPreferences({ hideHealthPreviews: true }); setHistory([]); setCareRecords([]); setCareError(""); setMonitoring({ records: [], events: [] }); setHistoryError(""); setMonitoringError("");
     if (!user || !token) { setLoading(false); return; }
     setLoading(true);
     async function load() {
-      const results = await Promise.allSettled([api.get("/profile"), api.get(`/history?personId=${encodeURIComponent(personId)}`), api.get(`/monitoring/history?personId=${encodeURIComponent(personId)}`)]);
+      const results = await Promise.allSettled([api.get("/profile"), api.get(`/history?personId=${encodeURIComponent(personId)}`), api.get(`/monitoring/history?personId=${encodeURIComponent(personId)}`), api.get(`/care?personId=${encodeURIComponent(personId)}`)]);
       if (!active) return;
       const [profile, analyses, measurements] = results;
       if (profile.status === "fulfilled") {
@@ -76,12 +79,14 @@ export default function HistoryScreen({ navigation, route }) {
       else setHistoryError("Não foi possível carregar as análises. Tente atualizar.");
       if (measurements.status === "fulfilled" && Array.isArray(measurements.value.data.records) && Array.isArray(measurements.value.data.events)) setMonitoring(measurements.value.data);
       else setMonitoringError("Os registros de monitoramento estão indisponíveis neste momento.");
+      if (results[3].status === "fulfilled" && Array.isArray(results[3].value.data.records)) setCareRecords(results[3].value.data.records);
+      else setCareError("Não foi possível carregar medicamentos, consultas, alergias e vacinas para a busca.");
       setLoading(false);
     }
     load(); return () => { active = false; };
   }, [user, token, personId, revision]));
 
-  async function selectPerson(id) { setHistory([]); setMonitoring({ records: [], events: [] }); setPersonId(id); await setStoredItem(MONITORED_PERSON_STORAGE_KEY, id); }
+  async function selectPerson(id) { setHistory([]); setCareRecords([]); setMonitoring({ records: [], events: [] }); setPersonId(id); await setStoredItem(MONITORED_PERSON_STORAGE_KEY, id); }
   function toggle(id) { setExpanded(current => current === id ? "" : id); }
   async function saveMeasurement() {
     if (saving || loading || monitoringError) return;
@@ -124,6 +129,7 @@ export default function HistoryScreen({ navigation, route }) {
       </View>
       {!token ? <View style={styles.group}><Text style={styles.notice}>Entre na sua conta para consultar seu prontuário.</Text><Button title="Entrar" onPress={() => navigation.navigate("Login", { returnToPrevious: true })} /></View> : null}
       {loading ? <ActivityIndicator color={colors.primary} /> : null}
+      {token?<RecordSearch key={`${user?._id || user?.id}:${personId}`} history={history} records={careRecords} personId={personId} preferences={preferences} loading={loading} errors={[historyError,careError]} navigation={navigation}/>:null}
       <View style={styles.group}><Row icon="timeline-clock-outline" title="Linha do tempo completa" subtitle="Relatos, medições, doses, vacinas e consultas" onPress={() => navigation.navigate("Care", { section: "timeline", personId, revision: Date.now() })} /></View>
       <Text style={styles.section}>SAÚDE E AGENDA</Text>
       <View style={styles.group}>
