@@ -1,221 +1,226 @@
 # MEDSCAN
 
-MEDSCAN é um aplicativo mobile de inteligência artificial para triagem médica e assistência preventiva. O projeto foi criado em duas partes:
+> **Saúde mais clara, cuidado mais organizado.**
 
-- `medscan-app`: app mobile em React Native com Expo, JavaScript e navegação completa.
-- `medscan-api`: backend REST em Node.js, Express, MongoDB Atlas e Mongoose.
+O MEDSCAN é uma plataforma web responsiva para organizar informações de saúde, registrar cuidados do dia a dia e oferecer orientações iniciais por inteligência artificial. O projeto foi desenvolvido para a Mostra de Tecnologia de 2026.
 
-O sistema não substitui consulta médica. As telas de resultado exibem o aviso obrigatório:
+**Acesse a demonstração:** [medscan-h9jq.onrender.com](https://medscan-h9jq.onrender.com)
 
-> Esta análise não substitui uma consulta médica. Em caso de urgência, procure atendimento imediatamente.
+> ⚠️ O MEDSCAN não realiza diagnóstico e não substitui consulta, exame ou conduta de profissionais de saúde. As orientações por IA são informativas e indicam quando procurar atendimento.
 
-## Tecnologias
+## 📌 Informações Gerais
 
-Frontend:
+| Informação | Detalhes |
+| --- | --- |
+| **Nome do projeto** | MEDSCAN |
+| **Equipe** | MEDTECH |
+| **Curso** | Técnico em Informática |
+| **Instituição** | FUNEC Riacho |
+| **Ano/Semestre** | 2026 |
+| **Professor orientador** | Rangel |
+| **Setor de aplicação** | Saúde, prevenção e organização do cuidado pessoal |
 
-- React Native com Expo
-- React Navigation
-- Axios
-- Expo Image Picker
-- Expo Vector Icons
-- JavaScript, sem TypeScript
+## 🎯 Objetivo do Projeto
 
-Backend:
+Desenvolver uma plataforma acessível pelo celular e computador que ajude pessoas a registrar sintomas, exames, medicamentos, consultas, vacinas, alergias e medições de saúde em um só lugar. O sistema organiza esses dados para facilitar o acompanhamento pessoal e a preparação para conversas com profissionais de saúde.
 
-- Node.js
-- Express
-- MongoDB Atlas
-- Mongoose
-- CORS
-- Dotenv
-- Multer
-- Bcrypt
-- JSON Web Token
-- Gemini API para relatorios orientativos em texto e imagem
+## 👥 Público-Alvo
 
-## Estrutura
+- Pessoas que desejam manter seu histórico de saúde organizado.
+- Familiares e cuidadores que acompanham mais de uma pessoa.
+- Usuários que precisam reunir sintomas, medicamentos, consultas e documentos antes de procurar atendimento.
+- Estudantes e visitantes interessados em conhecer uma aplicação responsável de IA no contexto da saúde.
 
-```txt
+## 🧩 Problema a Ser Resolvido
+
+Informações como sintomas, resultados de exames, horários de medicamentos, vacinas e consultas costumam ficar espalhadas entre papéis, mensagens e aplicativos diferentes. Na hora de buscar atendimento, pode ser difícil lembrar a ordem dos acontecimentos, explicar o que mudou ou encontrar um documento importante.
+
+Além disso, muitas pessoas têm dúvidas ao ler termos de saúde e não sabem quais informações são importantes para relatar ao profissional. O MEDSCAN foi pensado para organizar esse percurso, sem substituir a avaliação clínica.
+
+## 💡 Solução Proposta
+
+O MEDSCAN reúne registros pessoais de saúde em uma interface simples e adaptada para celular e computador. A pessoa pode relatar o que sente, receber uma orientação inicial estruturada por IA, guardar esse conteúdo no prontuário, acompanhar a rotina de cuidados e gerar um resumo para levar à consulta.
+
+A ideia central é apoiar quatro etapas: **relatar, entender, organizar e consultar**.
+
+```text
+Pessoa registra informações
+           ↓
+MEDSCAN organiza o histórico e a rotina
+           ↓
+IA apresenta uma orientação inicial com limites claros
+           ↓
+Usuário revisa as informações antes de falar com um profissional
+```
+
+## 🌿 Funcionalidades do Sistema
+
+- Cadastro, login e manutenção de sessão do usuário.
+- Perfil pessoal e cadastro de familiares ou pessoas acompanhadas.
+- Relato de sintomas com duração, intensidade e contexto adicional.
+- Envio de imagem de exame ou documento para análise orientativa por IA.
+- Resultado estruturado com resumo, achados relevantes, sinais de atenção, próximos passos e limites da análise.
+- Complementos de um relato, preservando o histórico das respostas anteriores.
+- Prontuário digital com linha do tempo, filtros e busca por registros.
+- Calendário horizontal de medicamentos, com horários e confirmação de tomada.
+- Calendário mensal de consultas, com perguntas, documentos e orientações para o encontro.
+- Registro de alergias e carteira pessoal de vacinação.
+- Registro manual de frequência cardíaca e glicose, com histórico e gráficos.
+- Central de notificações de análises recentes dentro do sistema.
+- Geração de resumo para consulta, com opção de salvar ou imprimir em PDF.
+- Tema claro e escuro, layout responsivo e navegação adaptada para celular e computador.
+
+## ✅ Requisitos Funcionais
+
+- **RF01:** permitir cadastro, login e edição de perfil do usuário.
+- **RF02:** permitir selecionar e cadastrar pessoas acompanhadas na mesma conta.
+- **RF03:** permitir registrar e consultar informações de saúde, como sintomas, medicamentos, consultas, alergias, vacinas e medições.
+- **RF04:** permitir enviar relatos em texto e imagens para receber orientação inicial por IA.
+- **RF05:** salvar as análises e complementos no prontuário, organizados em uma linha do tempo.
+- **RF06:** permitir buscar e filtrar registros no prontuário.
+- **RF07:** permitir organizar medicamentos por dia e horário, registrando tomadas realizadas.
+- **RF08:** permitir organizar consultas em calendário e registrar preparação para o atendimento.
+- **RF09:** gerar um resumo de informações para consulta.
+
+## 🛡️ Requisitos Não Funcionais
+
+- O sistema deve funcionar em navegadores de computadores e celulares conectados à internet.
+- A interface deve ser responsiva, legível e simples de utilizar.
+- Áreas privadas devem exigir autenticação.
+- Senhas devem ser armazenadas de forma protegida.
+- Chaves de serviços externos devem ficar apenas no servidor, fora do código público.
+- O sistema deve deixar claro que a IA oferece orientação, e não diagnóstico médico.
+- Dados usados em demonstrações devem ser fictícios ou autorizados pelo usuário.
+
+## 🛠️ Tecnologias Utilizadas
+
+- **Linguagens:** JavaScript, HTML e CSS gerados pela plataforma web.
+- **Interface:** React Native, Expo e React Native Web.
+- **Back-end:** Node.js e Express.
+- **Banco de dados:** MongoDB Atlas e Mongoose.
+- **Autenticação:** JSON Web Token (JWT) e bcryptjs.
+- **Recursos adicionais:** integração com provedores de IA, upload de imagens, geração de PDF e gráficos.
+- **Hospedagem:** Render.
+- **Versionamento:** Git e GitHub.
+
+## 📁 Estrutura do Projeto
+
+```text
 MEDSCAN/
-  medscan-app/
-    App.js
-    src/
-      api/
-      components/
-      constants/
-      context/
-      navigation/
-      screens/
-      utils/
-  medscan-api/
-    server.js
-    src/
-      config/
-      controllers/
-      middleware/
-      models/
-      routes/
-      services/
-      utils/
-    uploads/
+├── medscan-app/          # Interface web responsiva construída com Expo
+│   ├── src/
+│   ├── assets/
+│   └── package.json
+├── medscan-api/          # API, autenticação, banco de dados e integração com IA
+│   ├── src/
+│   ├── scripts/
+│   └── package.json
+├── output/               # Materiais e documentação do projeto
+├── README.md             # Apresentação técnica para a Mostra
+└── FEIRA.md              # Preparação da demonstração
 ```
 
-## Configurar MongoDB Atlas
+## 🖥️ Protótipos e Telas
 
-1. Crie um cluster no MongoDB Atlas.
-2. Crie um usuário de banco com senha.
-3. Libere seu IP em `Network Access`.
-4. Copie a connection string do Atlas.
-5. No backend, crie `medscan-api/.env` usando `medscan-api/.env.example` como base.
+O protótipo funcional pode ser explorado no link abaixo, em computador ou celular:
 
-Exemplo:
+- [Abrir MEDSCAN](https://medscan-h9jq.onrender.com)
 
-```env
-PORT=3000
-MONGO_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/medscan?retryWrites=true&w=majority
-JWT_SECRET=um_segredo_forte
-JWT_EXPIRES_IN=7d
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.6-flash
-```
+Principais telas: boas-vindas e login, início, análise por IA, prontuário, medicamentos, consultas, vacinação, alergias, monitoramento, notificações e perfil.
 
-Gere a chave no Google AI Studio e configure `GEMINI_API_KEY` no arquivo local ou nas variaveis do Render. A chave é obrigatória para análises. Sem ela, o backend retorna indisponibilidade (503). O modelo configurado é respeitado; confirme sua disponibilidade no projeto do Google.
+## 🔐 Controle de Acesso
 
-## Rodar o backend
+| Perfil | Permissões |
+| --- | --- |
+| **Usuário autenticado** | Gerencia seu perfil, pessoas acompanhadas e os registros vinculados à própria conta. |
+| **Visitante** | Pode acessar somente telas públicas de apresentação e criar uma conta. |
+
+O protótipo não possui um painel administrativo clínico. O acompanhamento de familiares ocorre dentro da conta responsável e não representa compartilhamento automático com médicos ou outras contas.
+
+## 📅 Cronograma do Projeto
+
+| Etapa | Descrição | Responsável | Situação |
+| --- | --- | --- | --- |
+| 1 | Levantamento do problema e pesquisa sobre saúde e IA | Equipe MEDTECH | Concluída |
+| 2 | Modelagem das funções e do fluxo de navegação | Equipe MEDTECH | Concluída |
+| 3 | Desenvolvimento da interface, API e banco de dados | Equipe MEDTECH | Concluída |
+| 4 | Testes de navegação, responsividade e integração | Equipe MEDTECH | Em andamento |
+| 5 | Preparação da demonstração para a Mostra de Tecnologia | Equipe MEDTECH | Em andamento |
+
+## 👨‍💻 Integrantes da Equipe
+
+| Nome | Função | Responsabilidade |
+| --- | --- | --- |
+| Arthur Felipe | Equipe MEDTECH | Pesquisa, testes e apresentação do projeto. |
+| Bernardo Henrique | Equipe MEDTECH | Desenvolvimento, integração e apresentação do projeto. |
+| Guilherme Saymon | Equipe MEDTECH | Pesquisa, testes e apresentação do projeto. |
+| Henrique Xavier | Equipe MEDTECH | Pesquisa, testes e apresentação do projeto. |
+| Laura Massula | Equipe MEDTECH | Pesquisa e apresentação do projeto. |
+| Pedro Henrique | Equipe MEDTECH | Desenvolvimento e documentação do projeto. |
+
+> As responsabilidades são colaborativas e podem ser atualizadas pela equipe antes da entrega final.
+
+## ▶️ Como Executar o Projeto Localmente
+
+O sistema possui duas partes: a interface e a API.
+
+### 1. Preparar a API
 
 ```bash
 cd medscan-api
 npm install
+```
+
+Crie um arquivo `.env` com base em `.env.example` e configure as variáveis necessárias, como conexão com MongoDB, JWT e chaves de IA. **Nunca publique esse arquivo.**
+
+```bash
 npm run dev
 ```
 
-A API roda em:
+Por padrão, a API fica disponível em `http://localhost:3000`.
 
-```txt
-http://localhost:3000
+### 2. Preparar a interface
+
+```bash
+cd medscan-app
+npm install
 ```
 
-Rotas principais:
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/ai/analyze`
-- `GET /api/history`
-- `GET /api/history/:id`
-- `POST /api/history`
-- `GET /api/monitoring`
-- `POST /api/monitoring`
-- `GET /api/devices`
-- `POST /api/devices`
-- `GET /api/profile`
-- `PUT /api/profile`
-
-## Rodar o app Expo
-
-Crie `medscan-app/.env` usando `medscan-app/.env.example` como base:
+Crie o arquivo `medscan-app/.env` com base em `.env.example`, apontando a interface para a API local:
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ```
 
-Use a URL correta para seu ambiente:
-
-- Web ou iOS Simulator: `http://localhost:3000/api`
-- Android Emulator: `http://10.0.2.2:3000/api`
-- Celular físico: `http://SEU_IP_NA_REDE:3000/api`
-
-Depois rode:
+Depois, execute:
 
 ```bash
-cd medscan-app
-npm install
-npm start
+npm run web
 ```
 
-## Fluxo implementado
+Para usar o MEDSCAN sem instalar nada, acesse a versão publicada no Render: [medscan-h9jq.onrender.com](https://medscan-h9jq.onrender.com).
 
-- Tela Inicial
-- Login
-- Cadastro
-- Home / Converse com IA
-- Envio de exame, imagem ou sintomas
-- Resultado da IA com aviso médico
-- Histórico com detalhes
-- Monitoramento de saúde
-- Perfil e configurações
-- Barra inferior nas telas principais
+## ⚠️ Limites e Cuidados
 
-## Dados mockados
+- O MEDSCAN é um protótipo educacional e não substitui profissionais de saúde.
+- As respostas da IA podem estar incompletas ou incorretas e devem ser avaliadas com senso crítico.
+- Os cartões de sinais vitais exibidos na página inicial usam valores demonstrativos quando não há registros reais.
+- O sistema ainda não realiza medição automática por sensores ou dispositivos vestíveis.
+- Glicose e pressão arterial exigem instrumentos próprios de medição; não podem ser obtidas apenas pela interface ou por um sensor de frequência cardíaca.
+- Para a demonstração, devem ser utilizados dados fictícios e sem informações pessoais de visitantes.
 
-O endpoint de análise não retorna resultados mockados: falhas de configuração, cota ou resposta incompleta são informadas ao app. O app também possui mocks locais para histórico, monitoramento, dispositivos e resultado caso o backend esteja indisponível durante testes de interface.
+## 🚀 Próximos Passos
 
-## Segurança
+- Realizar testes de usabilidade com usuários.
+- Revisar a clareza das orientações com profissionais da área da saúde.
+- Ampliar recursos de privacidade e proteção de dados.
+- Estudar a integração futura de um sensor de frequência cardíaca para fins demonstrativos.
 
-- Senhas são salvas com `bcrypt`.
-- Rotas privadas usam JWT via `authMiddleware`.
-- Variáveis sensíveis ficam no `.env`.
-- Chaves de API não são salvas no código.
+## 📚 Referências
 
-## Observação médica
+- Organização Mundial da Saúde. [Ethics and governance of AI for health](https://www.who.int/publications/i/item/9789240084759).
+- Brasil. [Lei Geral de Proteção de Dados Pessoais — LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm).
 
-Todas as análises são orientativas. Em caso de urgência, procure atendimento médico imediatamente.
+---
 
-## Atualização de experiência e análise
-
-- Início com identidade verde e branca, acesso ao prontuário e à análise em tela própria. Os indicadores da Home ficam sem valores até existir uma fonte de medições confiável; não representam monitoramento ativo.
-- Formulário com sintomas, imagem, duração, intensidade e contexto opcional.
-- Resultado apresenta o relatório completo salvo em `analysis.result`, sem porcentagens de confiança inventadas. O botão de complemento leva o relato e as perguntas para uma nova análise; imagens precisam ser anexadas novamente.
-- Respostas estruturadas seguem o [formato JSON Schema da API Gemini](https://ai.google.dev/gemini-api/docs/structured-output). O serviço valida os campos antes de salvar. A validação estrutural não é validação clínica.
-- O filtro antigo que rejeitava menções a outros sistemas do corpo foi removido.
-
-Validação local: `node --test medscan-api/src/services/aiService.test.js`. Os testes simulam o provedor; uma avaliação clínica das respostas reais continua necessária. Para verificar o bundle web: `cd medscan-app` e `npx expo export --platform web`.
-
-Teste de interface sem Gemini/banco: execute `node scripts/preview-api.cjs`. Em outro terminal PowerShell, dentro de `medscan-app`, execute `$env:EXPO_PUBLIC_API_URL='http://localhost:3001/api'; npx expo start --web --port 8083` e abra `/analise`. Use somente relatos fictícios. Esta configuração é restrita ao processo de teste e não altera o `.env`. Encerre ambos os processos ao terminar.
-
-Os parâmetros clínicos de navegação permanecem em memória e não entram nas URLs. Teste: `node --test medscan-app/src/utils/navigationState.test.mjs`. O complemento mantém a pessoa do registro original; o formulário exige carregar o prontuário antes do envio.
-
-### Registros de monitoramento no prontuário
-`GET /api/monitoring/history?personId=self` retorna até 100 medições e comparações descritivas entre valores do mesmo indicador/pessoa. `POST /api/monitoring` aceita `monitoredPersonId`, `heartRate` (bpm), `glucose` (mg/dL), `measuredAt` (ISO; padrão agora) e `note`. Pelo menos um indicador deve ser informado. O formulário usa o horário do envio; os horários são exibidos no fuso local do aparelho. Não há detecção clínica de emergência ou integração com wearables nesta implementação.
-
-Registros antigos, criados com valores de demonstração e sem `source: recorded`, não entram nos relatórios. Publique o backend atualizado antes de usar os novos endpoints no app conectado ao Render. Testes: `node --test medscan-api/src/services/monitoringEvents.test.js medscan-api/src/controllers/monitoringController.test.js`.
-
-### Diagnóstico e recuperação da IA
-
-`GEMINI_MODEL` define o modelo principal. Quando não há reserva externa configurada, erros HTTP 500/502/503/504 acionam `GEMINI_FALLBACK_MODEL` (padrão: `gemini-3.7-flash`) em até três chamadas e 120 segundos. Defina a alternativa como vazia para repetir apenas o principal. O mesmo relato, imagem e esquema são mantidos; o resultado registra o modelo que efetivamente respondeu. Somente respostas completas são salvas.
-
-Com reservas configuradas, erros de cota, saldo ou indisponibilidade fazem a chamada avançar para o próximo provedor independente. Se a sequência não conseguir responder, cada provedor que retornou HTTP 429 pode receber uma tentativa adicional após pelo menos 10 segundos, respeitando também `Retry-After`. No fluxo exclusivo Gemini, essa tentativa usa o mesmo modelo, sem alternar modelos para contornar a cota do projeto. O limite total continua sendo 120 segundos, até 60 segundos por chamada; uma espera que ultrapasse esse prazo não é iniciada. A tela permanece carregando durante a recuperação, sem exigir reenvio do usuário. As tentativas ocorrem antes de salvar a análise. Falhas de credenciais, resposta incompleta e timeout ambíguo não acionam reservas. Se a recuperação falhar, o erro final continua explícito; consulte cota/saldo para 429 e modelo/chave para erros de configuração.
-
-`node scripts/diagnose-ai.cjs` consulta o modelo configurado e a lista do provedor sem imprimir credenciais. A listagem não garante que a geração funcione. `--generate` faz uma chamada curta; `--analysis` valida o formato completo com um relato fictício e sem gravação no banco. `--model=NOME` seleciona o modelo somente para o processo de diagnóstico. Essas duas opções usam a cota da API.
-
-`node scripts/check-public-ai.cjs` usa apenas a conta QA previamente criada por `smoke-auth.cjs`, com um relato fictício; uma análise bem-sucedida fica registrada nessa conta. Nunca usa a sessão pessoal do navegador.
-
-### Provedores de reserva
-
-Configure somente no backend (`medscan-api/.env` local ou Environment do serviço da API):
-
-```dotenv
-GROQ_FALLBACK_ENABLED=true
-GROQ_API_KEY=
-GROQ_MODEL=openai/gpt-oss-120b
-MISTRAL_FALLBACK_ENABLED=true
-MISTRAL_API_KEY=
-MISTRAL_MODEL=mistral-small-latest
-OPENROUTER_FALLBACK_ENABLED=true
-OPENROUTER_API_KEY=
-COHERE_FALLBACK_ENABLED=true
-COHERE_API_KEY=
-COHERE_MODEL=command-a-03-2025
-```
-
-Crie chaves no [Groq Console](https://console.groq.com/keys), [Mistral Studio](https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key), [OpenRouter](https://openrouter.ai/settings/keys) e [Cohere](https://dashboard.cohere.com/api-keys). Preencha apenas as que desejar usar. Cada reserva exige chave e flag `true`; uma chave vazia a desativa. Mantenha as contas nos respectivos planos gratuitos e confira os limites no painel de cada serviço. A integração não altera o plano de cobrança da conta. Nunca use `EXPO_PUBLIC_*` para chaves; reinicie a API após editar o `.env` ou as variáveis do Render.
-
-Para texto, a ordem é Gemini → Groq → Mistral → OpenRouter → Cohere. Para imagens, é Gemini → Mistral; o anexo não é descartado para chamar um modelo só de texto. Uma resposta válida encerra a sequência. HTTP 429, 402 ou 500/502/503/504 passa para a próxima reserva configurada. OpenRouter fica preso a `openrouter/free`, que seleciona um modelo gratuito disponível; qualidade e disponibilidade podem variar.
-
-Se uma reserva devolver HTTP 400 com falha explícita de geração JSON (`json_validate_failed` ou `structured_generation_failed`), o serviço permite uma nova geração no mesmo provedor e depois tenta a reserva seguinte, se houver. Respostas parciais, truncadas ou fora do esquema são recusadas. Os logs registram somente provedor, modelo, status e categoria segura, nunca a mensagem bruta do provedor.
-
-Todas as reservas recebem as mesmas instruções e o relato completo. O resultado salvo no prontuário inclui `source` e o modelo ou rota configurada; `openrouter/free` pode selecionar um modelo diferente em cada chamada. O modelo Groq deve suportar [JSON Schema estrito](https://console.groq.com/docs/structured-outputs); o Mistral Small aceita [imagem](https://docs.mistral.ai/studio/conversations/vision) e saída estruturada. O OpenRouter distribui o relato a provedores parceiros conforme a rota gratuita. A chamada exige suporte a JSON Schema e [bloqueia coleta de dados pelo provedor](https://openrouter.ai/docs/guides/get-started/sovereign-ai); ainda assim, avalie as políticas de dados antes de enviar informações de saúde reais por essa reserva.
-
-Testes automatizados simulam os provedores e não fazem chamadas reais. Após configurar a chave, ainda é necessário validar qualidade em português, acesso e cota com relatos fictícios antes de usar na feira. Publicação do backend é necessária para a mudança chegar ao app no Render.
-
-Para testar as correções locais, confirme que `medscan-app/.env` usa `EXPO_PUBLIC_API_URL=http://localhost:3000/api` e reinicie o Expo após alterar esse endereço. Abrir a interface no localhost não garante que ela esteja usando o backend local. A API deve estar em execução na porta 3000, com conexão ao banco. `node scripts/check-public-ai.cjs --local` testa esse backend usando somente a conta QA já existente; uma resposta bem-sucedida cria um registro fictício nessa conta.
+Desenvolvido pela **Equipe MEDTECH** para a Mostra de Tecnologia de 2026.
